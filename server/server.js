@@ -534,6 +534,20 @@ io.on('connection', (socket) => {
         socket.join(`resto_${restaurantId}`);
     });
 });
+const { createClient } = require('redis');
+const { createAdapter } = require('@socket.io/redis-adapter');
+
+// Redis ক্লায়েন্ট তৈরি (Render বা ক্লাউড এনভায়রনমেন্ট থেকে REDIS_URL নেবে)
+const pubClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+const subClient = pubClient.duplicate();
+
+// কানেক্ট করার পর Socket.io-এ এডাপ্টার সেটআপ করা
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log("⚡ Socket.io Redis Adapter Connected Successfully!");
+}).catch(err => {
+    console.error("❌ Redis Adapter Connection Error:", err);
+});
 
 // ================= PRODUCTION ERROR MASKING MIDDLEWARE =================
 app.use((err, req, res, next) => {
