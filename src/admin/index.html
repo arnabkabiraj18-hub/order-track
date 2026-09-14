@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title id="pageTitleMeta">OrderTrack - Restaurant Operating System</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "brand-red": "#9e1b2f",
+                        "brand-red-hover": "#80121d",
+                        "brand-red-light": "#fbf2f3",
+                        "bg-page": "#fcfbf9",
+                        "bg-card": "#ffffff",
+                        "text-main": "#1b1918",
+                        "text-muted": "#6a6664",
+                        "border-subtle": "#ece7e2"
+                    },
+                    fontFamily: {
+                        "serif": ["Playfair Display", "serif"],
+                        "sans": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined' !important; font-size: 18px; line-height: 1; display: inline-block; }
+    </style>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-bg-page text-text-main font-sans min-h-screen antialiased selection:bg-brand-red selection:text-white">
+
+    <!-- ================= NAVBAR ================= -->
+    <header class="border-b border-border-subtle bg-bg-page/95 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
+            
+            <!-- OrderTrack Brand Logo -->
+            <div onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex items-center gap-2 cursor-pointer">
+                <div class="w-9 h-9 rounded-xl bg-brand-red text-white flex items-center justify-center font-bold shadow-xs">
+                    <span id="brandLogoAbbr" class="font-serif text-lg">OT</span>
+                </div>
+                <span id="brandLogoText" class="font-serif text-2xl font-bold text-brand-red tracking-tight">OrderTrack</span>
+            </div>
+
+            <!-- Nav Links -->
+            <nav class="hidden md:flex items-center gap-8 text-xs font-semibold text-text-muted">
+                <a href="#features" class="hover:text-brand-red transition-colors">Features</a>
+                <a href="#solutions" class="hover:text-brand-red transition-colors">Solutions</a>
+                <a href="#pricing" class="hover:text-brand-red transition-colors">Pricing</a>
+                <button type="button" onclick="openInfoModal('contact')" class="hover:text-brand-red transition-colors">Contact</button>
+            </nav>
+
+            <!-- Actions: Sign In (Goes to Registration signup.html) & Primary Action -->
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="goToTargetPage('signup.html')" class="text-xs font-semibold text-text-muted hover:text-brand-red px-2.5 py-1.5 transition-colors">Sign In</button>
+                <button type="button" id="navPrimaryActionBtn" onclick="handlePrimaryAction()" class="px-4 py-2 bg-brand-red hover:bg-brand-red-hover text-white text-xs font-semibold rounded-md shadow-sm transition-all active:scale-95 flex items-center gap-1.5">
+                    <span id="navPrimaryBtnText">Go to Dashboard</span>
+                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= HERO SECTION ================= -->
+    <section class="max-w-6xl mx-auto px-4 pt-16 pb-12 text-center space-y-6">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-border-subtle shadow-2xs">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-red animate-pulse"></span>
+            <span class="text-[11px] font-semibold text-brand-red tracking-wide">Enterprise Hospitality Operating Suite</span>
+        </div>
+
+        <h1 class="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-text-main leading-[1.15] max-w-4xl mx-auto">
+            Transform Your Restaurant Operations with <span id="heroBrandHighlight" class="text-brand-red italic font-normal">OrderTrack</span>
+        </h1>
+
+        <p class="text-xs sm:text-sm text-text-muted max-w-2xl mx-auto leading-relaxed">
+            Synchronize table QR standees, kitchen display tickets (KDS), waiter service terminals, and split cashier billing under one intelligent cloud roof.
+        </p>
+
+        <!-- Hero Actions -->
+        <div class="flex items-center justify-center gap-3 pt-2">
+            <button type="button" onclick="openFreeTrialViewer()" class="px-6 py-2.5 bg-brand-red hover:bg-brand-red-hover text-white text-xs font-bold rounded-md shadow-sm transition-all active:scale-95 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm">rocket_launch</span>
+                <span>Start Free Trial</span>
+            </button>
+            <button type="button" id="heroSecondaryBtn" onclick="handlePrimaryAction()" class="px-6 py-2.5 bg-white hover:bg-gray-50 border border-border-subtle text-xs font-semibold text-text-main rounded-md shadow-2xs transition-all">
+                Go to Dashboard
+            </button>
+        </div>
+
+        <!-- ================= VISUAL DASHBOARD PREVIEW ================= -->
+        <div class="pt-8 max-w-5xl mx-auto select-none pointer-events-none">
+            <div class="bg-white rounded-2xl border border-border-subtle p-3 md:p-5 shadow-2xl text-left space-y-4">
+                
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center border-b border-border-subtle pb-3 gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-lg bg-brand-red text-white flex items-center justify-center font-bold text-xs">OT</div>
+                        <div>
+                            <span class="font-serif font-bold text-xs text-text-main leading-none block">OrderTrack Control Suite</span>
+                            <span class="text-[10px] text-text-muted">Master Command Panel</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1 overflow-x-auto text-[11px] font-semibold text-text-muted">
+                        <span class="px-2.5 py-1 rounded-md bg-brand-red-light text-brand-red font-bold">Overview</span>
+                        <span class="px-2.5 py-1 rounded-md">Kitchen KDS</span>
+                        <span class="px-2.5 py-1 rounded-md">Waiter Floor</span>
+                        <span class="px-2.5 py-1 rounded-md">POS Billing</span>
+                        <span class="px-2.5 py-1 rounded-md">Analytics</span>
+                    </div>
+
+                    <div class="flex items-center gap-2 self-end sm:self-auto">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60" class="w-6 h-6 rounded-full object-cover border" alt="Manager"/>
+                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">● Live Cloud Sync</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+                    <div class="md:col-span-5 bg-bg-page p-3 rounded-xl border border-border-subtle space-y-2 flex flex-col justify-between">
+                        <div class="flex justify-between items-center border-b border-border-subtle pb-1.5">
+                            <span class="font-serif font-bold text-xs text-text-main">Live Order Tracking</span>
+                            <span class="text-[9px] font-bold text-brand-red">3 ACTIVE TABLES</span>
+                        </div>
+                        <div class="space-y-1.5 text-[11px] font-medium">
+                            <div class="flex justify-between items-center py-1 border-b border-border-subtle/60">
+                                <span class="font-bold text-brand-red">Table 02</span>
+                                <span class="truncate max-w-[120px]">2x Egg Roll, 1x Tea</span>
+                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold">Cooking</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 border-b border-border-subtle/60">
+                                <span class="font-bold text-brand-red">Table 05</span>
+                                <span class="truncate max-w-[120px]">1x Chicken Biryani</span>
+                                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">Served</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1">
+                                <span class="font-bold text-brand-red">Table 08</span>
+                                <span class="truncate max-w-[120px]">3x Paneer Roll</span>
+                                <span class="px-1.5 py-0.5 rounded bg-red-100 text-brand-red text-[9px] font-bold">Bill Req</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-4 bg-bg-page p-3 rounded-xl border border-border-subtle space-y-2 flex flex-col justify-between">
+                        <div class="flex justify-between items-center">
+                            <span class="font-serif font-bold text-xs text-text-main">Floor Occupancy</span>
+                            <span class="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded">14/18 Seated</span>
+                        </div>
+                        <div class="h-24 relative flex items-center justify-center">
+                            <canvas id="heroMockDonutChart"></canvas>
+                        </div>
+                        <div class="flex justify-between text-center text-[10px] font-bold pt-1 border-t border-border-subtle">
+                            <span class="text-emerald-800">14 Seated</span>
+                            <span class="text-amber-700">3 Cooking</span>
+                            <span class="text-gray-400">4 Free</span>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-3 bg-bg-page p-3 rounded-xl border border-border-subtle space-y-1.5 flex flex-col justify-between text-[11px]">
+                        <span class="font-serif font-bold text-xs text-text-main">Capacity Counts</span>
+                        <div class="flex justify-between p-1.5 bg-white rounded border border-border-subtle">
+                            <span class="text-text-muted">Kitchen Queue</span>
+                            <span class="font-bold text-brand-red">6 Items</span>
+                        </div>
+                        <div class="flex justify-between p-1.5 bg-white rounded border border-border-subtle">
+                            <span class="text-text-muted">Bill Pending</span>
+                            <span class="font-bold text-amber-700">2 Tables</span>
+                        </div>
+                        <div class="flex justify-between p-1.5 bg-white rounded border border-border-subtle">
+                            <span class="text-text-muted">Turnover</span>
+                            <span class="font-bold text-emerald-700">38m avg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs pt-1">
+                    <div class="md:col-span-4 bg-bg-page p-3 rounded-xl border border-border-subtle space-y-2 flex flex-col justify-between">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="text-[9px] font-bold text-text-muted uppercase block">Today's Sales</span>
+                                <span class="font-serif font-bold text-xl text-brand-red">₹48,920</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[9px] font-bold text-text-muted uppercase block">Avg Ticket</span>
+                                <span class="font-serif font-bold text-sm text-text-main">₹685.50</span>
+                            </div>
+                        </div>
+                        <div class="h-24 relative">
+                            <canvas id="heroMockWaveChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-5 bg-bg-page p-3 rounded-xl border border-border-subtle space-y-2 flex flex-col justify-between">
+                        <div class="flex justify-between items-center border-b border-border-subtle pb-1">
+                            <span class="font-serif font-bold text-xs text-text-main">Digital Menu Management</span>
+                            <span class="text-[9px] font-bold text-brand-red bg-brand-red-light px-2 py-0.5 rounded">Active Items</span>
+                        </div>
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between p-1.5 bg-white rounded border border-border-subtle text-[11px]">
+                                <div class="flex items-center gap-2">
+                                    <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=60" class="w-7 h-7 rounded object-cover" alt="Dish"/>
+                                    <span class="font-bold truncate max-w-[140px]">Crispy Chicken Roll</span>
+                                </div>
+                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">● In Stock</span>
+                            </div>
+                            <div class="flex items-center justify-between p-1.5 bg-white rounded border border-border-subtle text-[11px]">
+                                <div class="flex items-center gap-2">
+                                    <img src="https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=60" class="w-7 h-7 rounded object-cover" alt="Dish"/>
+                                    <span class="font-bold truncate max-w-[140px]">Dum Biryani</span>
+                                </div>
+                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">● In Stock</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-3 bg-bg-page p-3 rounded-xl border border-border-subtle space-y-1.5 flex flex-col justify-between text-[11px]">
+                        <div class="flex justify-between items-center border-b border-border-subtle pb-1">
+                            <span class="font-serif font-bold text-xs text-text-main">Staff Terminals</span>
+                            <span class="text-[9px] text-emerald-700 font-bold">3 Online</span>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center p-1 bg-white rounded border border-border-subtle">
+                                <span class="font-bold text-text-main">Rahul (Floor)</span>
+                                <span class="text-brand-red font-bold">14 Tbl</span>
+                            </div>
+                            <div class="flex justify-between items-center p-1 bg-white rounded border border-border-subtle">
+                                <span class="font-bold text-text-main">Chef Amit</span>
+                                <span class="text-emerald-700 font-bold">Kitchen</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= SOCIAL PROOF ================= -->
+    <section class="border-y border-border-subtle py-8 bg-white text-center">
+        <p class="text-[10px] font-bold text-text-muted tracking-[0.2em] uppercase mb-4">
+            Trusted by Premier Hospitality Establishments
+        </p>
+        <div class="max-w-4xl mx-auto px-4 flex flex-wrap justify-center items-center gap-8 md:gap-16 text-text-muted/60 font-serif text-sm font-semibold tracking-wider">
+            <span>Le Bernardin</span>
+            <span>Alinea</span>
+            <span>Noma</span>
+            <span>Osteria Francescana</span>
+        </div>
+    </section>
+
+    <!-- ================= 4 BENTO FEATURES ================= -->
+    <section id="features" class="max-w-5xl mx-auto px-4 py-20 space-y-12">
+        <div class="text-center space-y-2">
+            <h2 class="font-serif text-3xl md:text-4xl font-bold text-text-main">
+                Operational Excellence, Engineered.
+            </h2>
+            <p class="text-xs text-text-muted max-w-md mx-auto">
+                Everything required to run a high-turnover culinary enterprise with absolute precision.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <div class="md:col-span-7 bg-white rounded-2xl border border-border-subtle p-6 space-y-4 shadow-xs flex flex-col justify-between">
+                <div class="space-y-2">
+                    <div class="w-7 h-7 rounded-lg bg-red-50 text-brand-red flex items-center justify-center font-bold text-xs">QR</div>
+                    <h3 class="font-serif font-bold text-xl text-text-main">Digital QR Menus</h3>
+                    <p class="text-xs text-text-muted leading-relaxed">
+                        Seamless, custom-branded QR codes for each table and zone. Diners scan and order instantly with zero app downloads, reducing wait times and increasing average spend.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <div class="rounded-xl overflow-hidden border border-border-subtle h-36">
+                        <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80" alt="Restaurant Dining Table" class="w-full h-full object-cover">
+                    </div>
+                    <div class="bg-bg-page rounded-xl border border-border-subtle p-3 flex flex-col justify-between text-xs">
+                        <div class="space-y-1">
+                            <span class="font-bold text-text-main block">Interactive Catalog</span>
+                            <p class="text-[11px] text-text-muted leading-tight">Instant add-ons, spice preferences, and allergy notes.</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-brand-red uppercase">Zero Waiter Delay</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-5 bg-white rounded-2xl border border-border-subtle p-6 space-y-4 shadow-xs flex flex-col justify-between">
+                <div class="space-y-2">
+                    <div class="w-7 h-7 rounded-lg bg-red-50 text-brand-red flex items-center justify-center">
+                        <span class="material-symbols-outlined text-base">insights</span>
+                    </div>
+                    <h3 class="font-serif font-bold text-xl text-text-main">Advanced Analytics</h3>
+                    <p class="text-xs text-text-muted leading-relaxed">
+                        Track sales curves, identify peak rush hours, and forecast inventory needs with complete data transparency.
+                    </p>
+                </div>
+                <div class="p-3.5 bg-bg-page rounded-xl border border-border-subtle space-y-2 text-xs">
+                    <div class="flex justify-between font-bold text-[11px]">
+                        <span>UPI Digital</span>
+                        <span class="text-brand-red font-mono">₹32,450 (68%)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-brand-red h-full" style="width: 68%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-5 bg-white rounded-2xl border border-border-subtle p-6 space-y-3 shadow-xs">
+                <div class="w-7 h-7 rounded-lg bg-red-50 text-brand-red flex items-center justify-center">
+                    <span class="material-symbols-outlined text-base">skillet</span>
+                </div>
+                <h3 class="font-serif font-bold text-xl text-text-main">Live Order Tracking</h3>
+                <p class="text-xs text-text-muted leading-relaxed">
+                    Real-time synchronization between table QR and KDS line screens. Keep front and back of house completely aligned during rush hours.
+                </p>
+            </div>
+
+            <div class="md:col-span-7 bg-white rounded-2xl border border-border-subtle p-6 space-y-3 shadow-xs">
+                <div class="w-7 h-7 rounded-lg bg-red-50 text-brand-red flex items-center justify-center">
+                    <span class="material-symbols-outlined text-base">badge</span>
+                </div>
+                <h3 class="font-serif font-bold text-xl text-text-main">Staff Management</h3>
+                <p class="text-xs text-text-muted leading-relaxed">
+                    Equip your floor team with dedicated waiter dispatching, table turnover metrics, and performance analytics with strict 6-digit security PIN gates.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= SOLUTIONS ================= -->
+    <section id="solutions" class="max-w-5xl mx-auto px-4 py-16 space-y-12 border-t border-border-subtle">
+        <div class="text-center space-y-2">
+            <span class="text-[10px] font-bold text-brand-red uppercase tracking-wider bg-brand-red-light px-3 py-1 rounded-full">Core Architecture</span>
+            <h2 class="font-serif text-3xl md:text-4xl font-bold text-text-main">Solutions Engineered for OrderTrack</h2>
+            <p class="text-xs text-text-muted max-w-lg mx-auto">
+                Purpose-built modules synchronized directly into your dining floor, kitchen line, and cashier terminals.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="bg-white rounded-xl border border-border-subtle p-5 space-y-3 shadow-xs hover:border-brand-red transition-all">
+                <div class="w-8 h-8 rounded-lg bg-brand-red-light text-brand-red flex items-center justify-center font-bold">
+                    <span class="material-symbols-outlined">qr_code_2</span>
+                </div>
+                <h4 class="font-serif font-bold text-base text-text-main">Smart Table QR Standees</h4>
+                <p class="text-xs text-text-muted leading-relaxed">Enables guests to browse high-definition menus and page floor waiters with zero app installs.</p>
+            </div>
+            <div class="bg-white rounded-xl border border-border-subtle p-5 space-y-3 shadow-xs hover:border-brand-red transition-all">
+                <div class="w-8 h-8 rounded-lg bg-brand-red-light text-brand-red flex items-center justify-center font-bold">
+                    <span class="material-symbols-outlined">skillet</span>
+                </div>
+                <h4 class="font-serif font-bold text-base text-text-main">Kitchen Display (KDS)</h4>
+                <p class="text-xs text-text-muted leading-relaxed">Digital ticket boards with preparation timers and audio chimes notify kitchen heads instantly.</p>
+            </div>
+            <div class="bg-white rounded-xl border border-border-subtle p-5 space-y-3 shadow-xs hover:border-brand-red transition-all">
+                <div class="w-8 h-8 rounded-lg bg-brand-red-light text-brand-red flex items-center justify-center font-bold">
+                    <span class="material-symbols-outlined">room_service</span>
+                </div>
+                <h4 class="font-serif font-bold text-base text-text-main">Waiter Desk Terminals</h4>
+                <p class="text-xs text-text-muted leading-relaxed">Floor staff receive immediate alerts when orders are hot and ready for delivery.</p>
+            </div>
+            <div class="bg-white rounded-xl border border-border-subtle p-5 space-y-3 shadow-xs hover:border-brand-red transition-all">
+                <div class="w-8 h-8 rounded-lg bg-brand-red-light text-brand-red flex items-center justify-center font-bold">
+                    <span class="material-symbols-outlined">point_of_sale</span>
+                </div>
+                <h4 class="font-serif font-bold text-base text-text-main">Split POS Cashier Desk</h4>
+                <p class="text-xs text-text-muted leading-relaxed">One-click Cash and UPI split calculations, table settlement, and thermal printer receipt tokens.</p>
+            </div>
+            <div class="bg-white rounded-xl border border-border-subtle p-5 space-y-3 shadow-xs hover:border-brand-red transition-all">
+                <div class="w-8 h-8 rounded-lg bg-brand-red-light text-brand-red flex items-center justify-center font-bold">
+                    <span class="material-symbols-outlined">call_split</span>
+                </div>
+                <h4 class="font-serif font-bold text-base text-text-main">Table Sharing Sub-Orders</h4>
+                <p class="text-xs text-text-muted leading-relaxed">Effortlessly split high-occupancy 4-seater tables into independent dining sessions (Table 4A & 4B).</p>
+            </div>
+            <div class="bg-white rounded-xl border border-border-subtle p-5 space-y-3 shadow-xs hover:border-brand-red transition-all">
+                <div class="w-8 h-8 rounded-lg bg-brand-red-light text-brand-red flex items-center justify-center font-bold">
+                    <span class="material-symbols-outlined">local_shipping</span>
+                </div>
+                <h4 class="font-serif font-bold text-base text-text-main">Food Truck Master Mode</h4>
+                <p class="text-xs text-text-muted leading-relaxed">Streamlined single-smartphone interface managing order queues and customer pickup numbers.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= PRICING ================= -->
+    <section id="pricing" class="max-w-5xl mx-auto px-4 py-16 space-y-12">
+        <div class="text-center space-y-2">
+            <h2 class="font-serif text-3xl md:text-4xl font-bold text-text-main">Pricing Plans</h2>
+            <p class="text-xs text-text-muted max-w-sm mx-auto">
+                Click on any plan to select it. Managed via Super Admin.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch" id="dynamicPricingContainer">
+            
+            <!-- Starter Plan Card -->
+            <div id="mainPlanCardStarter" onclick="highlightPricingCard('Starter')" class="pricing-card bg-white rounded-2xl border-2 border-border-subtle p-6 space-y-6 flex flex-col justify-between shadow-xs cursor-pointer transition-all hover:border-brand-red/60">
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-serif font-bold text-lg text-text-main">Starter</h4>
+                        <span id="badgeStarter" class="text-[10px] font-bold text-text-muted px-2 py-0.5 rounded-full bg-bg-page border">Click to Select</span>
+                    </div>
+                    <div id="starterPriceDisplay" class="font-serif font-bold text-3xl text-brand-red">₹1,999 <span class="text-xs font-sans font-normal text-text-muted">/mo</span></div>
+                    <ul id="starterFeaturesList" class="space-y-2.5 pt-3 border-t border-border-subtle text-xs text-text-muted">
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Digital QR Standees</li>
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Up to 50 Menu Items</li>
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Daily Revenue Reports</li>
+                    </ul>
+                </div>
+                <button type="button" onclick="event.stopPropagation(); proceedWithPlan('Starter')" class="w-full py-2.5 border border-brand-red text-brand-red font-semibold rounded-lg text-xs text-center hover:bg-brand-red hover:text-white transition-all">Book Starter</button>
+            </div>
+
+            <!-- Professional Plan Card -->
+            <div id="mainPlanCardProfessional" onclick="highlightPricingCard('Professional')" class="pricing-card bg-white rounded-2xl border-2 border-brand-red p-6 space-y-6 flex flex-col justify-between shadow-lg relative cursor-pointer transition-all">
+                <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-red text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">Most Popular</span>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-serif font-bold text-lg text-text-main">Professional</h4>
+                        <span id="badgeProfessional" class="text-[10px] font-bold text-brand-red px-2 py-0.5 rounded-full bg-red-50 border border-red-200">Selected</span>
+                    </div>
+                    <div id="proPriceDisplay" class="font-serif font-bold text-3xl text-brand-red">₹4,999 <span class="text-xs font-sans font-normal text-text-muted">/mo</span></div>
+                    <ul id="proFeaturesList" class="space-y-2.5 pt-3 border-t border-border-subtle text-xs text-text-main font-medium">
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Unlimited Menu & Modifiers</li>
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> 360° Floor Heatmap Radar</li>
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> 15 Waiter + 4 KDS Terminals</li>
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> 24/7 Priority Emergency Support</li>
+                    </ul>
+                </div>
+                <button type="button" onclick="event.stopPropagation(); proceedWithPlan('Professional')" class="w-full py-2.5 bg-brand-red hover:bg-brand-red-hover text-white font-bold rounded-lg text-xs text-center shadow-sm transition-colors">Book Professional</button>
+            </div>
+
+            <!-- Enterprise Plan Card -->
+            <div id="mainPlanCardEnterprise" onclick="highlightPricingCard('Enterprise')" class="pricing-card bg-white rounded-2xl border-2 border-border-subtle p-6 space-y-6 flex flex-col justify-between shadow-xs cursor-pointer transition-all hover:border-brand-red/60">
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-serif font-bold text-lg text-text-main">Enterprise</h4>
+                        <span id="badgeEnterprise" class="text-[10px] font-bold text-text-muted px-2 py-0.5 rounded-full bg-bg-page border">Click to Select</span>
+                    </div>
+                    <div id="enterprisePriceDisplay" class="font-serif font-bold text-3xl text-text-main">Custom</div>
+                    <ul id="enterpriseFeaturesList" class="space-y-2.5 pt-3 border-t border-border-subtle text-xs text-text-muted">
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Multi-Branch Central Ledger</li>
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Custom ERP & Tally Bridge</li>
+                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Dedicated Operations Manager</li>
+                    </ul>
+                </div>
+                <button type="button" onclick="event.stopPropagation(); proceedWithPlan('Enterprise')" class="w-full py-2.5 border border-border-subtle hover:border-brand-red text-text-main font-semibold rounded-lg text-xs text-center transition-colors">Contact Sales</button>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="border-t border-border-subtle py-8 text-xs text-text-muted bg-white">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div id="footerBrandName" class="font-serif font-bold text-brand-red text-base">OrderTrack</div>
+            <div class="flex flex-wrap justify-center gap-6">
+                <button type="button" onclick="openInfoModal('about')" class="hover:text-brand-red transition-colors font-medium">About Us</button>
+                <button type="button" onclick="openInfoModal('privacy')" class="hover:text-brand-red transition-colors font-medium">Privacy Policy</button>
+                <button type="button" onclick="openInfoModal('terms')" class="hover:text-brand-red transition-colors font-medium">Terms of Service</button>
+                <button type="button" onclick="openInfoModal('contact')" class="hover:text-brand-red transition-colors font-medium">Contact</button>
+            </div>
+            <div>© 2026 OrderTrack Operating Systems. All rights reserved.</div>
+        </div>
+    </footer>
+
+    <!-- ================= MODAL: 4-DIGIT PIN DIRECT UNLOCK (KNOWN DEVICE) ================= -->
+    <div id="quickPinDirectModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full border border-border-subtle shadow-2xl text-center space-y-4">
+            <div class="w-12 h-12 rounded-2xl bg-brand-red-light text-brand-red flex items-center justify-center mx-auto">
+                <span class="material-symbols-outlined text-2xl">lock_open</span>
+            </div>
+            <div>
+                <span class="inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-200">Recognized Device</span>
+                <h3 class="font-serif font-bold text-lg text-text-main mt-1" id="quickPinRestName">My Restaurant</h3>
+                <p class="text-xs text-text-muted">Enter your 4-digit PIN to directly open Admin Dashboard.</p>
+            </div>
+
+            <form onsubmit="handleDirectPinUnlock(event)" class="space-y-3">
+                <input type="password" id="inputDirectPin" maxlength="4" minlength="4" required placeholder="••••" class="w-full py-3 bg-bg-page border border-border-subtle rounded-xl text-center font-extrabold tracking-[0.5em] text-2xl text-text-main outline-none focus:border-brand-red">
+                <button type="submit" class="w-full py-3 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs rounded-xl shadow-md transition-all">
+                    Open Admin Dashboard
+                </button>
+            </form>
+
+            <div class="border-t border-border-subtle pt-2 flex justify-between text-[11px]">
+                <button type="button" onclick="goToTargetPage('login.html')" class="text-brand-red font-semibold hover:underline">Use Full Login</button>
+                <button type="button" onclick="closeQuickPinDirectModal()" class="text-text-muted hover:underline">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: FREE TRIAL ================= -->
+    <div id="freeTrialModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-border-subtle shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-serif font-bold text-xl text-brand-red">14-Day Free Trial Demos</h3>
+                    <p class="text-xs text-text-muted">Test terminals instantly before registration.</p>
+                </div>
+                <button type="button" onclick="closeFreeTrialViewer()" class="w-8 h-8 rounded-full bg-bg-page flex items-center justify-center text-text-muted">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+
+            <div class="space-y-2.5 text-xs text-text-main">
+                <div class="p-3 bg-bg-page rounded-xl border border-border-subtle space-y-1">
+                    <span class="font-bold text-brand-red block">1. Contactless Diner Terminal:</span>
+                    <p class="text-text-muted">Simulate table QR browsing, add-on customization, and instant order dispatching.</p>
+                    <button type="button" onclick="goToTargetPage('../customer/index.html?table=1')" class="mt-1 text-xs font-bold text-brand-red underline">Open Diner Demo ↗</button>
+                </div>
+
+                <div class="p-3 bg-bg-page rounded-xl border border-border-subtle space-y-1">
+                    <span class="font-bold text-brand-red block">2. Kitchen Display (KDS):</span>
+                    <p class="text-text-muted">Watch how live tickets trigger audio chimes and manage kitchen queues.</p>
+                    <button type="button" onclick="goToTargetPage('../kitchen/index.html')" class="mt-1 text-xs font-bold text-brand-red underline">Open Kitchen Screen ↗</button>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button type="button" onclick="goToTargetPage('signup.html')" class="w-full py-3 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs rounded-xl shadow-md transition-all">
+                    Register Free Workspace
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: ABOUT, PRIVACY, TERMS & CONTACT ================= -->
+    <div id="infoContentModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-border-subtle shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-border-subtle pb-3">
+                <h3 id="infoModalHeader" class="font-serif font-bold text-xl text-brand-red">Information</h3>
+                <button type="button" onclick="closeInfoModal()" class="w-8 h-8 rounded-full bg-bg-page flex items-center justify-center text-text-muted">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+
+            <div id="infoModalBody" class="text-xs text-text-main leading-relaxed space-y-3"></div>
+
+            <div class="pt-2 text-right">
+                <button type="button" onclick="closeInfoModal()" class="px-5 py-2 bg-brand-red text-white text-xs font-bold rounded-lg shadow-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT ENGINE -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVONxcHUwzSMcn1wAlE_FfAne4P4fobDg",
+            authDomain: "menu-app-db2e7.firebaseapp.com",
+            databaseURL: "https://menu-app-db2e7-default-rtdb.firebaseio.com",
+            projectId: "menu-app-db2e7",
+            storageBucket: "menu-app-db2e7.firebasestorage.app",
+            messagingSenderId: "679971467353",
+            appId: "1:679971467353:web:a399d60cd4bf0273858148",
+            measurementId: "G-F4PSQGYFNQ"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let landingContentCache = {};
+
+        // Real-time sync for About, Privacy, Terms, Contact from Super Admin
+        database.ref('settings/landingPage').on('value', snap => {
+            landingContentCache = snap.val() || {};
+        });
+
+        // Real-time sync for Logo & Brand Name from Super Admin
+        database.ref('settings/branding').on('value', snap => {
+            const b = snap.val() || {};
+            if (b.name) {
+                document.getElementById('footerBrandName').innerText = b.name;
+                document.getElementById('heroBrandHighlight').innerText = b.name;
+                document.getElementById('pageTitleMeta').innerText = b.name + " - Restaurant Operating System";
+                
+                const logoContainer = document.querySelector('header .max-w-6xl > div:first-child');
+                if (logoContainer) {
+                    const textSpan = logoContainer.querySelector('span:last-child');
+                    const abbrSpan = logoContainer.querySelector('.w-9 span');
+                    if (textSpan) textSpan.innerText = b.name;
+                    if (abbrSpan) abbrSpan.innerText = b.name.substring(0, 2).toUpperCase();
+                }
+            }
+        });
+
+        // Real-time sync for Subscription Plans from Super Admin
+        database.ref('settings/subscriptionPlans').on('value', snap => {
+            const plans = snap.val() || {};
+            
+            if (plans.Starter) {
+                if (plans.Starter.price) {
+                    const el = document.getElementById('starterPriceDisplay');
+                    if (el) el.innerHTML = `₹${plans.Starter.price} <span class="text-xs font-sans font-normal text-text-muted">/mo</span>`;
+                }
+                if (plans.Starter.features && Array.isArray(plans.Starter.features)) {
+                    const ul = document.getElementById('starterFeaturesList');
+                    if (ul) ul.innerHTML = plans.Starter.features.map(f => `<li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> ${f}</li>`).join('');
+                }
+            }
+
+            if (plans.Professional) {
+                if (plans.Professional.price) {
+                    const el = document.getElementById('proPriceDisplay');
+                    if (el) el.innerHTML = `₹${plans.Professional.price} <span class="text-xs font-sans font-normal text-text-muted">/mo</span>`;
+                }
+                if (plans.Professional.features && Array.isArray(plans.Professional.features)) {
+                    const ul = document.getElementById('proFeaturesList');
+                    if (ul) ul.innerHTML = plans.Professional.features.map(f => `<li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> ${f}</li>`).join('');
+                }
+            }
+
+            if (plans.Enterprise) {
+                if (plans.Enterprise.price) {
+                    const el = document.getElementById('enterprisePriceDisplay');
+                    if (el) el.innerHTML = plans.Enterprise.price === 'Custom' ? 'Custom' : `₹${plans.Enterprise.price} <span class="text-xs font-sans font-normal text-text-muted">/mo</span>`;
+                }
+                if (plans.Enterprise.features && Array.isArray(plans.Enterprise.features)) {
+                    const ul = document.getElementById('enterpriseFeaturesList');
+                    if (ul) ul.innerHTML = plans.Enterprise.features.map(f => `<li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> ${f}</li>`).join('');
+                }
+            }
+        });
+
+        async function sha256Hash(string) {
+            const utf8 = new TextEncoder().encode(string);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(bytes => bytes.toString(16).padStart(2, '0')).join('');
+        }
+
+        function resolvePath(fileName) {
+            const currentPath = window.location.pathname;
+            if (currentPath.includes('/src/admin/') || window.location.href.includes('/src/admin/')) {
+                return fileName;
+            } else {
+                return 'src/admin/' + fileName;
+            }
+        }
+
+        function goToTargetPage(fileName) {
+            window.location.href = resolvePath(fileName);
+        }
+
+        const savedRestId = localStorage.getItem('CV_DEVICE_REST_ID');
+        const savedPinHash = localStorage.getItem('CV_DEVICE_QUICK_PIN_HASH');
+        const savedName = localStorage.getItem('CV_DEVICE_REST_NAME');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (savedRestId && savedPinHash) {
+                document.getElementById('navPrimaryBtnText').innerText = "Go to Admin Dashboard";
+                document.getElementById('heroSecondaryBtn').innerText = "Go to Admin Dashboard";
+            }
+        });
+
+        // Primary action: If already logged in, show PIN unlock modal. Otherwise, go to login.html
+        function handlePrimaryAction() {
+            if (savedRestId && savedPinHash) {
+                document.getElementById('quickPinRestName').innerText = savedName || "My Restaurant";
+                document.getElementById('quickPinDirectModal').classList.remove('hidden');
+                document.getElementById('quickPinDirectModal').classList.add('flex');
+            } else {
+                goToTargetPage('login.html');
+            }
+        }
+
+        function closeQuickPinDirectModal() {
+            document.getElementById('quickPinDirectModal').classList.add('hidden');
+            document.getElementById('quickPinDirectModal').classList.remove('flex');
+        }
+
+        async function handleDirectPinUnlock(e) {
+            e.preventDefault();
+            const inputPin = document.getElementById('inputDirectPin').value.trim();
+            const currentHash = await sha256Hash(inputPin);
+
+            if (currentHash === savedPinHash) {
+                sessionStorage.setItem('CV_ADMIN_LOGGED', 'true');
+                sessionStorage.setItem('CV_LOGGED_REST_ID', savedRestId);
+                goToTargetPage('admin.html');
+            } else {
+                alert("Incorrect 4-digit PIN! Please try again.");
+                document.getElementById('inputDirectPin').value = "";
+            }
+        }
+
+        let selectedPlan = "Professional";
+        function highlightPricingCard(plan) {
+            selectedPlan = plan;
+            const plans = ['Starter', 'Professional', 'Enterprise'];
+
+            plans.forEach(p => {
+                const card = document.getElementById('mainPlanCard' + p);
+                const badge = document.getElementById('badge' + p);
+
+                if (p === plan) {
+                    card.className = "pricing-card bg-white rounded-2xl border-2 border-brand-red p-6 space-y-6 flex flex-col justify-between shadow-lg relative cursor-pointer transition-all";
+                    badge.className = "text-[10px] font-bold text-brand-red px-2 py-0.5 rounded-full bg-red-50 border border-red-200";
+                    badge.innerText = "Selected";
+                } else {
+                    card.className = "pricing-card bg-white rounded-2xl border-2 border-border-subtle p-6 space-y-6 flex flex-col justify-between shadow-xs cursor-pointer transition-all hover:border-brand-red/60";
+                    badge.className = "text-[10px] font-bold text-text-muted px-2 py-0.5 rounded-full bg-bg-page border";
+                    badge.innerText = "Click to Select";
+                }
+            });
+        }
+
+        function proceedWithPlan(plan) {
+            sessionStorage.setItem('SELECTED_PLAN', plan);
+            goToTargetPage('signup.html');
+        }
+
+        function openFreeTrialViewer() {
+            document.getElementById('freeTrialModal').classList.remove('hidden');
+            document.getElementById('freeTrialModal').classList.add('flex');
+        }
+        function closeFreeTrialViewer() {
+            document.getElementById('freeTrialModal').classList.add('hidden');
+            document.getElementById('freeTrialModal').classList.remove('flex');
+        }
+
+        function openInfoModal(type) {
+            const modal = document.getElementById('infoContentModal');
+            const header = document.getElementById('infoModalHeader');
+            const body = document.getElementById('infoModalBody');
+
+            if (type === 'about') {
+                header.innerText = "About OrderTrack";
+                body.innerHTML = landingContentCache.aboutUs || `
+                    <div class="space-y-2">
+                        <p><strong>OrderTrack</strong> is an all-in-one culinary operations management suite built specifically for high-speed restaurants, bistros, and cloud kitchens.</p>
+                        <ul class="list-disc pl-4 space-y-1 text-text-muted">
+                            <li><strong>Unified Architecture:</strong> Connects customer QR ordering, kitchen display lines (KDS), waiter tablets, and POS billing into a real-time system.</li>
+                            <li><strong>Zero Wait Time:</strong> Orders fire directly to line cooks without waiting for paper chits.</li>
+                            <li><strong>Device Security:</strong> 4-digit PIN authorization protects POS and administrative terminals.</li>
+                        </ul>
+                    </div>
+                `;
+            } else if (type === 'privacy') {
+                header.innerText = "Privacy Policy";
+                body.innerHTML = landingContentCache.privacy || `
+                    <div class="space-y-2">
+                        <p>OrderTrack guarantees complete confidentiality of your restaurant's billing and financial operations.</p>
+                        <ul class="list-disc pl-4 space-y-1 text-text-muted">
+                            <li><strong>Isolated Data:</strong> Your restaurant records and daily sales ledger are sandboxed in an encrypted node.</li>
+                            <li><strong>No Third-Party Brokers:</strong> We do not sell transaction statistics or consumer contact numbers.</li>
+                            <li><strong>Hashed Passwords:</strong> Credentials and PINs are cryptographically hashed using SHA-256 before cloud storage.</li>
+                        </ul>
+                    </div>
+                `;
+            } else if (type === 'terms') {
+                header.innerText = "Terms of Service";
+                body.innerHTML = landingContentCache.terms || `
+                    <div class="space-y-2">
+                        <p>Usage agreement for authorized restaurant owners and floor staff:</p>
+                        <ul class="list-disc pl-4 space-y-1 text-text-muted">
+                            <li><strong>Uptime SLA:</strong> 99.9% cloud synchronization reliability during standard dining rush hours.</li>
+                            <li><strong>Terminal Custody:</strong> Managers are responsible for maintaining access control over their 4-digit PIN on premises.</li>
+                            <li><strong>Subscription Continuity:</strong> Plans can be renewed or modified at any time from your administration billing desk.</li>
+                        </ul>
+                    </div>
+                `;
+            } else if (type === 'contact') {
+                header.innerText = "Contact & Operations Helpdesk";
+                body.innerHTML = landingContentCache.contact || `
+                    <div class="space-y-2">
+                        <p class="font-bold text-brand-red">Dedicated 24/7 Hospitality Support:</p>
+                        <div class="p-2.5 bg-bg-page rounded-xl border border-border-subtle">
+                            <span class="block font-bold">Helpline:</span>
+                            <span class="text-text-muted">+91 98765 43210 (24/7 Operations Hotline)</span>
+                        </div>
+                        <div class="p-2.5 bg-bg-page rounded-xl border border-border-subtle">
+                            <span class="block font-bold">Official Email:</span>
+                            <span class="text-text-muted">support@ordertrack.com / billing@ordertrack.com</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeInfoModal() {
+            document.getElementById('infoContentModal').classList.add('hidden');
+            document.getElementById('infoContentModal').classList.remove('flex');
+        }
+    </script>
+</body>
+</html>

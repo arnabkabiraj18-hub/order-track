@@ -1,0 +1,2468 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>OrderTrack - Master Admin Suite</title>
+    
+    <!-- Google Fonts Hierarchy -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+
+    <!-- Standalone Client-side QR Engine & Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#9e1b2f",
+                        "primary-container": "#851425",
+                        "on-primary": "#ffffff",
+                        "secondary": "#006c4f",
+                        "secondary-container": "#8df7cc",
+                        "on-secondary": "#ffffff",
+                        "surface": "#fcf9f8",
+                        "surface-bright": "#fcf9f8",
+                        "surface-dim": "#dcd9d9",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container": "#f0eded",
+                        "surface-container-high": "#eae7e7",
+                        "surface-container-highest": "#e5e2e1",
+                        "on-surface": "#1b1b1b",
+                        "on-surface-variant": "#5b403f",
+                        "outline": "#8f6f6e",
+                        "outline-variant": "#e4bebc",
+                        "error": "#ba1a1a"
+                    },
+                    fontFamily: {
+                        "display": ["Montserrat", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                        "body": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined' !important;
+            font-size: 20px;
+            line-height: 1;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .icon-fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .excel-table th { background-color: #f0eded; border: 1px solid #dcd8d3; padding: 8px 12px; font-weight: 700; color: #5b403f; }
+        .excel-table td { border: 1px solid #e5e2e1; padding: 8px 12px; font-family: 'Inter', sans-serif; }
+        .excel-table tr:hover td { background-color: #fbf9f9; }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            #printableQRStandee, #printableQRStandee * { visibility: visible !important; }
+            #printableQRStandee {
+                position: absolute; left: 50%; top: 5%; transform: translateX(-50%);
+                width: 100% !important; max-width: 110mm !important; display: block !important;
+                border: 2px solid #9e1b2f !important; padding: 24px !important; border-radius: 20px !important;
+                background: #fff !important; box-shadow: none !important;
+            }
+        }
+    </style>
+
+    <!-- Socket.io Client Engine -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen flex antialiased selection:bg-primary selection:text-white">
+
+    <!-- ================= SIDEBAR NAVIGATION ================= -->
+    <aside class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 py-5 border-r border-outline-variant bg-surface-container-lowest z-40 shadow-sm justify-between overflow-y-auto">
+        <div class="space-y-6">
+            <div class="px-5 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center font-serif font-bold text-lg shadow-sm flex-shrink-0">
+                    OT
+                </div>
+                <div class="overflow-hidden">
+                    <h1 class="font-serif font-bold text-lg text-primary tracking-tight leading-tight">OrderTrack</h1>
+                    <p class="text-[10px] text-on-surface-variant font-medium tracking-wider uppercase"><span class="lang-text" data-en="Master Suite" data-bn="মাস্টার সুইট">Master Suite</span></p>
+                </div>
+            </div>
+
+            <nav class="space-y-1 px-3">
+                <button type="button" onclick="switchAdminTab('dashboardTab', this)" class="nav-item-btn active w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-bold text-xs bg-primary text-on-primary shadow-sm transition-all text-left">
+                    <span class="material-symbols-outlined text-lg">dashboard</span>
+                    <span class="lang-text" data-en="Dashboard & Radar" data-bn="ড্যাশবোর্ড ও রাডার">Dashboard & Radar</span>
+                </button>
+                <button type="button" onclick="switchAdminTab('analyticsTab', this)" class="nav-item-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-bold text-xs text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all text-left">
+                    <span class="material-symbols-outlined text-lg">analytics</span>
+                    <span class="lang-text" data-en="Analytics & Reports" data-bn="অ্যানালিটিক্স ও রিপোর্ট">Analytics & Reports</span>
+                </button>
+                <button type="button" onclick="switchAdminTab('menuTab', this)" class="nav-item-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-bold text-xs text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all text-left">
+                    <span class="material-symbols-outlined text-lg">restaurant_menu</span>
+                    <span class="lang-text" data-en="Menu & Combos" data-bn="মেনু ও কম্বো">Menu & Combos</span>
+                </button>
+                <button type="button" onclick="switchAdminTab('voidAuditTab', this)" class="nav-item-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-bold text-xs text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all text-left">
+                    <span class="material-symbols-outlined text-lg">security</span>
+                    <span class="lang-text" data-en="Cancel Audit Logs" data-bn="বাতিল অডিট লগ">Cancel Audit Logs</span>
+                </button>
+                <button type="button" onclick="switchAdminTab('devicesTab', this)" class="nav-item-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-bold text-xs text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all text-left">
+                    <span class="material-symbols-outlined text-lg">devices</span>
+                    <span class="lang-text" data-en="Staff Device Pools" data-bn="স্টাফ ডিভাইস পুল">Staff Device Pools</span>
+                </button>
+                <button type="button" onclick="switchAdminTab('tablesTab', this)" class="nav-item-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-bold text-xs text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all text-left">
+                    <span class="material-symbols-outlined text-lg">qr_code_2</span>
+                    <span class="lang-text" data-en="Tables & Standee QR" data-bn="টেবিল ও স্ট্যান্ডি QR">Tables & Standee QR</span>
+                </button>
+                <button type="button" id="navBtnSettings" onclick="switchAdminTab('settingsTab', this)" class="nav-item-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-bold text-xs text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all text-left">
+                    <span class="material-symbols-outlined text-lg">settings</span>
+                    <span class="lang-text" data-en="Restaurant Settings" data-bn="রেস্তোরাঁ সেটিংস">Restaurant Settings</span>
+                </button>
+            </nav>
+        </div>
+
+        <div class="px-3 space-y-1.5 pt-4 pb-4 border-t border-surface-container-highest mt-4 flex-shrink-0">
+            <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block px-1 mb-1"><span class="lang-text" data-en="Direct Terminals" data-bn="সরাসরি টার্মিনাল">Direct Terminals</span></span>
+            
+            <a href="../customer/index.html" target="_blank" class="w-full py-2 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs flex items-center justify-between border border-surface-container-highest transition-all">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">menu_book</span> <span class="lang-text" data-en="Customer Menu" data-bn="কাস্টমার মেনু">Customer Menu</span></span>
+                <span class="material-symbols-outlined text-xs text-gray-400">open_in_new</span>
+            </a>
+
+            <a href="../kitchen/index.html" target="_blank" class="w-full py-2 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs flex items-center justify-between border border-surface-container-highest transition-all">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-amber-700 text-sm">skillet</span> <span class="lang-text" data-en="Kitchen (KDS)" data-bn="কিচেন (KDS)">Kitchen (KDS)</span></span>
+                <span class="material-symbols-outlined text-xs text-gray-400">open_in_new</span>
+            </a>
+
+            <a href="../waiter/index.html" target="_blank" class="w-full py-2 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs flex items-center justify-between border border-surface-container-highest transition-all">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-sm">room_service</span> <span class="lang-text" data-en="Waiter Desk" data-bn="ওয়েটার ডেস্ক">Waiter Desk</span></span>
+                <span class="material-symbols-outlined text-xs text-gray-400">open_in_new</span>
+            </a>
+
+            <a href="../billing/index.html" target="_blank" class="w-full py-2 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs flex items-center justify-between border border-surface-container-highest transition-all">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">point_of_sale</span> <span class="lang-text" data-en="Billing Counter" data-bn="বিলিং কাউন্টার">Billing Counter</span></span>
+                <span class="material-symbols-outlined text-xs text-gray-400">open_in_new</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN WORKSPACE ================= -->
+    <div class="flex-1 md:ml-64 flex flex-col min-h-screen bg-surface">
+        
+        <!-- TOP APP BAR -->
+        <header class="flex items-center justify-between px-4 md:px-8 h-16 bg-surface-container-lowest border-b border-surface-container-highest sticky top-0 z-30 shadow-2xs">
+            <div class="flex items-center gap-2">
+                <h1 class="font-serif font-bold text-base md:text-lg text-on-surface" id="topNavRestName">Restaurant Admin</h1>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="sendDailyReportToWhatsApp()" class="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95">
+                    <span class="material-symbols-outlined text-base">chat</span>
+                    <span class="hidden sm:inline"><span class="lang-text" data-en="WhatsApp Daily Report" data-bn="হোয়াটসঅ্যাপ রিপোর্ট">WhatsApp Daily Report</span></span>
+                </button>
+
+                <!-- Language Toggle Button Beside Profile -->
+                <button type="button" onclick="toggleLanguage()" class="px-3.5 py-1.5 bg-surface-container-low hover:bg-surface-container rounded-full text-xs font-bold text-primary border border-outline-variant flex items-center gap-1.5 shadow-2xs transition-all">
+                    <span>🌐</span>
+                    <span id="langLabel">বাংলা</span>
+                </button>
+
+                <div onclick="switchAdminTab('settingsTab', document.getElementById('navBtnSettings'))" class="flex items-center gap-2.5 p-1 bg-surface-container-low hover:bg-surface-container rounded-full border border-surface-container-highest cursor-pointer transition-all">
+                    <span class="font-bold text-xs text-on-surface pl-2" id="topNavUserName">Owner Admin</span>
+                    <div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant bg-white flex items-center justify-center flex-shrink-0 shadow-2xs">
+                        <img id="topNavUserAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80" class="w-full h-full object-cover" alt="Avatar">
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile Navigation Tabs -->
+        <div class="md:hidden flex overflow-x-auto hide-scrollbar gap-2 p-3 bg-surface-container-low border-b border-surface-container-highest">
+            <button type="button" onclick="switchAdminTab('dashboardTab', this)" class="nav-item-btn active flex-shrink-0 px-3.5 py-1.5 rounded-full font-body font-bold text-xs bg-primary text-on-primary shadow-sm">Dashboard</button>
+            <button type="button" onclick="switchAdminTab('analyticsTab', this)" class="nav-item-btn flex-shrink-0 px-3.5 py-1.5 rounded-full font-body font-bold text-xs bg-surface-container-lowest text-on-surface-variant border border-outline-variant">Analytics</button>
+            <button type="button" onclick="switchAdminTab('menuTab', this)" class="nav-item-btn flex-shrink-0 px-3.5 py-1.5 rounded-full font-body font-bold text-xs bg-surface-container-lowest text-on-surface-variant border border-outline-variant">Menu & Combos</button>
+            <button type="button" onclick="switchAdminTab('voidAuditTab', this)" class="nav-item-btn flex-shrink-0 px-3.5 py-1.5 rounded-full font-body font-bold text-xs bg-surface-container-lowest text-on-surface-variant border border-outline-variant">Cancel Log</button>
+            <button type="button" onclick="switchAdminTab('devicesTab', this)" class="nav-item-btn flex-shrink-0 px-3.5 py-1.5 rounded-full font-body font-bold text-xs bg-surface-container-lowest text-on-surface-variant border border-outline-variant">Devices</button>
+            <button type="button" onclick="switchAdminTab('tablesTab', this)" class="nav-item-btn flex-shrink-0 px-3.5 py-1.5 rounded-full font-body font-bold text-xs bg-surface-container-lowest text-on-surface-variant border border-outline-variant">Tables</button>
+            <button type="button" onclick="switchAdminTab('settingsTab', this)" class="nav-item-btn flex-shrink-0 px-3.5 py-1.5 rounded-full font-body font-bold text-xs bg-surface-container-lowest text-on-surface-variant border border-outline-variant">Settings</button>
+        </div>
+
+        <main class="p-4 md:p-8 max-w-[1400px] w-full mx-auto flex-1">
+            
+            <!-- ================= VIEW 1: DASHBOARD & 360° RADAR ================= -->
+            <div id="dashboardTab" class="tab-view block space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-display font-bold text-xl text-on-surface"><span class="lang-text" data-en="Restaurant Command Center" data-bn="রেস্তোরাঁ কমান্ড সেন্টার">Restaurant Command Center</span></h2>
+                        <p class="text-xs text-on-surface-variant font-medium"><span class="lang-text" data-en="Real-time status of your floor tables, kitchen preparations, and daily income pulse." data-bn="আপনার টেবিল, কিচেন এবং দৈনিক আয়ের রিয়েল-টাইম স্ট্যাটাস।">Real-time status of your floor tables, kitchen preparations, and daily income pulse.</span></p>
+                    </div>
+                    <button type="button" onclick="switchAdminTab('analyticsTab', document.querySelectorAll('.nav-item-btn')[1])" class="bg-primary hover:bg-primary-container text-on-primary font-body font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5 active:scale-95 transition-all self-start">
+                        <span class="material-symbols-outlined text-sm">query_stats</span> <span class="lang-text" data-en="View Detailed Analytics" data-bn="বিস্তারিত অ্যানালিটিক্স দেখুন">View Detailed Analytics</span>
+                    </button>
+                </div>
+
+                <!-- 4 Bento Metric Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">TODAY'S REVENUE</span>
+                            <span class="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">₹</span>
+                        </div>
+                        <h3 id="dashStatTodayRevenue" class="font-display font-bold text-2xl text-primary">₹0</h3>
+                        <p class="text-[11px] font-medium text-secondary mt-1">Gross Settled</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">ACTIVE SEATED</span>
+                            <span class="w-6 h-6 rounded-md bg-secondary-container/40 text-secondary flex items-center justify-center font-bold text-xs"><span class="material-symbols-outlined text-sm">table_restaurant</span></span>
+                        </div>
+                        <h3 id="dashStatActiveTables" class="font-display font-bold text-2xl text-secondary">0</h3>
+                        <p class="text-[11px] font-medium text-on-surface-variant mt-1">Currently Dining</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">KITCHEN COOKING</span>
+                            <span class="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs"><span class="material-symbols-outlined text-sm">skillet</span></span>
+                        </div>
+                        <h3 id="dashStatCookingOrders" class="font-display font-bold text-2xl text-amber-700">0</h3>
+                        <p class="text-[11px] font-medium text-on-surface-variant mt-1">Pending Portions</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">NEEDS CLEANING</span>
+                            <span class="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs"><span class="material-symbols-outlined text-sm">cleaning_services</span></span>
+                        </div>
+                        <h3 id="dashStatDirtyTables" class="font-display font-bold text-2xl text-on-surface">0</h3>
+                        <p class="text-[11px] font-medium text-on-surface-variant mt-1">Table Turnover</p>
+                    </div>
+                </div>
+
+                <!-- 360° LIVE RADAR WITH REMOTE TABLE RESET -->
+                <div class="bg-surface-container-lowest p-6 rounded-3xl border border-surface-container-highest shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b pb-3">
+                        <div>
+                            <h3 class="font-display font-bold text-base text-on-surface flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">radar</span> <span class="lang-text" data-en="360° Live Floor Heatmap & Remote Reset" data-bn="৩৬০° লাইভ ফ্লোর হিটম্যাপ ও রিমোট রিসেট">360° Live Floor Heatmap & Remote Reset</span>
+                            </h3>
+                            <p class="text-xs text-on-surface-variant font-medium">ক্লিক করে যেকোনো টেবিল রিমোটলি ক্লিয়ার বা রিসেট করতে পারবেন</p>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-bold text-on-surface-variant flex-wrap">
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-secondary"></span> Seated</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cooking</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span> Bill Req</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Needs Clean</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span> Free</span>
+                        </div>
+                    </div>
+
+                    <div id="adminLiveFloorGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3"></div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 2: ANALYTICS ================= -->
+            <div id="analyticsTab" class="tab-view hidden space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-display font-bold text-xl text-on-surface"><span class="lang-text" data-en="Analytics & Financial Insights" data-bn="অ্যানালিটিক্স ও আর্থিক প্রতিবেদন">Analytics & Financial Insights</span></h2>
+                        <p class="text-xs text-on-surface-variant font-medium">Revenue curves, category breakdown, customer count chart, and Cash vs UPI metrics.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="analyticsTimeFilter" onchange="loadSalesOverview(this.value)" class="bg-surface-container-lowest border border-outline-variant text-xs font-bold rounded-lg px-3 py-2 outline-none cursor-pointer text-on-surface shadow-sm">
+                            <option value="1">Today</option>
+                            <option value="7">Last 7 Days</option>
+                            <option value="30" selected>Last 30 Days</option>
+                            <option value="365">Last 1 Year</option>
+                        </select>
+                        <button type="button" onclick="exportSalesToExcel()" class="bg-primary hover:bg-primary-container text-on-primary font-body font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm flex items-center gap-1.5 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-sm">download</span> <span class="lang-text" data-en="Export (CSV)" data-bn="এক্সপোর্ট (CSV)">Export (CSV)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4 METRIC CARDS -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border-2 border-primary shadow-sm">
+                        <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">TOTAL REVENUE</span>
+                        <h3 id="statTotalRevenue" class="font-display font-bold text-3xl text-primary">₹0</h3>
+                        <p class="text-[10px] text-gray-400 mt-1">Settled invoices total</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm">
+                        <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">AVERAGE BILL VALUE</span>
+                        <h3 id="statAvgBillAmount" class="font-display font-bold text-3xl text-on-surface">₹0</h3>
+                        <p class="text-[10px] text-emerald-700 font-bold mt-1" id="statAvgBillSubtext">Per settled ticket</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm">
+                        <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">TOTAL CUSTOMERS / BILLS</span>
+                        <h3 id="statTotalCustomersCount" class="font-display font-bold text-3xl text-secondary">0</h3>
+                        <p class="text-[10px] text-secondary font-medium mt-1">Diners served</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm">
+                        <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">UPI ONLINE SHARE</span>
+                        <h3 id="summaryUpiRev" class="font-display font-bold text-3xl text-emerald-700">₹0</h3>
+                        <p class="text-[10px] text-emerald-700 font-bold mt-1" id="upiShareRatio">0% volume</p>
+                    </div>
+                </div>
+
+                <!-- ROW 1: DAILY REVENUE BAR CHART & SALES BY CATEGORY DONUT -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                    <div class="lg:col-span-8 bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm space-y-3 flex flex-col justify-between">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <h3 class="font-display font-bold text-base text-on-surface">Daily Revenue Trend</h3>
+                            <span class="material-symbols-outlined text-gray-400 text-sm">bar_chart</span>
+                        </div>
+                        <div class="h-64 relative flex-1">
+                            <canvas id="screenshotBarChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-4 bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm space-y-3 flex flex-col justify-between">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <h3 class="font-display font-bold text-base text-on-surface">Sales by Category</h3>
+                        </div>
+                        <div class="h-44 relative flex items-center justify-center">
+                            <canvas id="screenshotCategoryDonut"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROW 2: TOP PERFORMING ITEMS & PAYMENT SPLIT + FOOTFALL CHART -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                    <div class="lg:col-span-6 bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <h3 class="font-display font-bold text-base text-on-surface">Top Performing Items</h3>
+                            <button type="button" onclick="switchAdminTab('menuTab', document.querySelectorAll('.nav-item-btn')[2])" class="text-xs text-primary font-bold hover:underline">View All</button>
+                        </div>
+                        <div class="space-y-3" id="screenshotTopItemsList"></div>
+                    </div>
+
+                    <div class="lg:col-span-6 bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm space-y-4 flex flex-col justify-between">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <h3 class="font-display font-bold text-base text-on-surface">Payment Split & Customer Flow</h3>
+                            <span class="material-symbols-outlined text-gray-400 text-sm">payments</span>
+                        </div>
+
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between font-bold">
+                                <span class="text-secondary flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-secondary"></span> UPI Bank Settlement: <span id="valUpiAmount">₹0</span></span>
+                                <span class="text-amber-800 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-600"></span> Cash Drawer: <span id="valCashAmount">₹0</span></span>
+                            </div>
+                            <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden flex">
+                                <div id="barUpiRatio" class="bg-secondary h-full" style="width: 50%"></div>
+                                <div id="barCashRatio" class="bg-amber-600 h-full" style="width: 50%"></div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <span class="text-[11px] font-bold text-gray-500 uppercase block mb-1">Customer Flow Per Day (Footfall)</span>
+                            <div class="h-36 relative">
+                                <canvas id="customerFootfallChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EXCEL SPREADSHEET TABLE -->
+                <div class="bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm overflow-hidden space-y-3 p-5">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-surface-container-highest pb-3">
+                        <div>
+                            <h3 class="font-display font-bold text-sm text-on-surface">Accounting Spreadsheet & Audit Log</h3>
+                            <p class="text-[11px] text-on-surface-variant font-medium">Tabular view formatted for book-keeping, taxes, and customer transaction records.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="excelSearchInput" onkeyup="filterExcelTable()" placeholder="Search in ledger..." class="px-3 py-1.5 bg-surface border border-outline-variant rounded-lg text-xs outline-none w-48">
+                            <span id="soldItemsCountBadge" class="bg-primary/10 text-primary text-xs font-bold px-3 py-1.5 rounded-lg">0 Invoices</span>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs excel-table border-collapse">
+                            <thead>
+                                <tr>
+                                    <th>INVOICE ID</th>
+                                    <th>DATE & TIME</th>
+                                    <th>TABLE</th>
+                                    <th>CUSTOMER NAME</th>
+                                    <th>PHONE NUMBER</th>
+                                    <th>ITEMS ORDERED</th>
+                                    <th class="text-center">PAYMENT MODE</th>
+                                    <th class="text-right">DISCOUNT</th>
+                                    <th class="text-right">TAX (GST)</th>
+                                    <th class="text-right">TOTAL (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailedSalesTableBody">
+                                <tr><td colspan="10" class="p-8 text-center text-on-surface-variant font-medium">No sales recorded for this period.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-3 bg-surface-container-low rounded-xl border border-surface-container-highest flex flex-wrap justify-between items-center text-xs font-bold gap-3 pt-2">
+                        <div class="text-on-surface">Total Invoices: <span id="summaryTotalBills" class="text-primary font-mono font-extrabold text-sm">0</span></div>
+                        <div class="text-on-surface">Total Discounts: <span id="summaryTotalDiscounts" class="text-secondary font-mono">₹0</span></div>
+                        <div class="text-on-surface">Total GST Collected: <span id="summaryTotalTax" class="text-on-surface-variant font-mono">₹0</span></div>
+                        <div class="text-on-surface text-sm">Grand Net Total: <span id="summaryGrandNet" class="text-primary font-serif font-extrabold text-base">₹0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 3: MENU & COMBOS ================= -->
+            <div id="menuTab" class="tab-view hidden space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-display font-bold text-xl text-on-surface"><span class="lang-text" data-en="Menu & Combo Deals" data-bn="মেনু ও কম্বো ডিলস">Menu & Combo Deals</span></h2>
+                        <p class="text-xs text-on-surface-variant font-medium">Manage dishes, combo packages, prices, add-ons, and station routing.</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="openCreateComboModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-sm">fastfood</span> <span class="lang-text" data-en="+ Create Combo" data-bn="+ কম্বো তৈরি করুন">+ Create Combo</span>
+                        </button>
+                        <button type="button" onclick="openDishModal('add')" class="bg-primary hover:bg-primary-container text-on-primary font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-sm">add</span> <span class="lang-text" data-en="+ Add New Item" data-bn="+ নতুন আইটেম যোগ করুন">+ Add New Item</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CATEGORY DROPDOWN (Duplicate Add Category removed) -->
+                <div class="flex items-center gap-3 bg-surface-container-lowest p-4 rounded-2xl border border-surface-container-highest shadow-sm w-full sm:w-auto">
+                    <span class="font-bold text-xs text-gray-700">Category Filter:</span>
+                    <select id="adminCategorySelectDropdown" onchange="filterMenuByCategorySelect(this.value)" class="px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold outline-none cursor-pointer">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+
+                <!-- ACTIVE COMBOS SECTION -->
+                <div class="bg-surface-container-lowest p-5 rounded-3xl border border-surface-container-highest space-y-3 shadow-sm">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="font-display font-bold text-sm text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber-600">fastfood</span> Active Combo Offers & Value Packs
+                        </h3>
+                        <span id="activeCombosCountBadge" class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[10px]">0 Combos</span>
+                    </div>
+                    <div id="adminCombosListGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+                </div>
+
+                <!-- SEARCH & FILTER -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-lg">search</span>
+                        <input type="text" id="adminMenuSearch" onkeyup="filterAdminMenuTable()" placeholder="Search menu items..." class="w-full pl-9 pr-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-xl text-xs outline-none focus:ring-1 focus:ring-primary">
+                    </div>
+                    <div id="adminCategoryFilters" class="flex overflow-x-auto gap-1.5 hide-scrollbar">
+                        <button type="button" onclick="filterMenuCategory('all', this)" class="menu-filter-pill active px-4 py-2 rounded-full font-bold text-xs bg-primary text-on-primary shadow-sm">All Items</button>
+                    </div>
+                </div>
+
+                <!-- DISHES TABLE -->
+                <div class="bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-surface-container-low text-on-surface-variant font-bold border-b border-surface-container-highest">
+                                    <th class="p-4">ITEM NAME & ADD-ONS</th>
+                                    <th class="p-4">CATEGORY</th>
+                                    <th class="p-4">PRICE</th>
+                                    <th class="p-4">STATION ROUTING</th>
+                                    <th class="p-4">STOCK STATUS</th>
+                                    <th class="p-4 text-right">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminMenuTableBody" class="divide-y divide-surface-container-highest text-on-surface">
+                                <tr><td colspan="6" class="p-8 text-center text-on-surface-variant font-medium">No menu items found. Click "+ Add New Item" to create one.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 4: SECURITY VOID & CANCEL AUDIT LOG ================= -->
+            <div id="voidAuditTab" class="tab-view hidden space-y-6">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <div>
+                        <h2 class="font-display font-bold text-xl text-on-surface">Security Void & Cancellation Audit Logs</h2>
+                        <p class="text-xs text-on-surface-variant font-medium">কাস্টমার বা ওয়েটার কোনো খাবার বাতিল করলে তার বিস্তারিত অডিট ইতিহাস</p>
+                    </div>
+                    <button type="button" onclick="clearOldVoidLogs()" class="px-3 py-1.5 bg-red-50 text-error border border-error/20 rounded-xl text-xs font-bold hover:bg-red-100">
+                        Clear All Void Logs
+                    </button>
+                </div>
+
+                <div class="bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm overflow-hidden p-4">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs excel-table border-collapse">
+                            <thead>
+                                <tr>
+                                    <th>DATE & TIME</th>
+                                    <th>TABLE</th>
+                                    <th>CANCELLED ITEM</th>
+                                    <th>REASON (বাতিলের কারণ)</th>
+                                    <th>ADDITIONAL NOTE</th>
+                                    <th>STAFF DEVICE ID</th>
+                                </tr>
+                            </thead>
+                            <tbody id="securityVoidLogsTableBody">
+                                <tr><td colspan="6" class="p-8 text-center text-gray-400">কোনো খাবার বাতিলের রেকর্ড নেই।</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 5: STAFF DEVICE POOLS ================= -->
+            <div id="devicesTab" class="tab-view hidden space-y-6">
+                <div>
+                    <h2 class="font-display font-bold text-xl text-on-surface"><span class="lang-text" data-en="Staff Device & Terminal Pools" data-bn="স্টাফ ডিভাইস ও টার্মিনাল পুল">Staff Device & Terminal Pools</span></h2>
+                    <p class="text-xs text-on-surface-variant font-medium">Manage active Waiter, Kitchen, and Billing tablets with strict 6-digit staff PIN security.</p>
+                </div>
+
+                <div class="bg-surface-container-lowest p-6 rounded-3xl border-2 border-secondary/30 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <div>
+                            <h3 class="font-display font-bold text-base text-secondary flex items-center gap-2">
+                                <span class="material-symbols-outlined">lock</span> <span class="lang-text" data-en="Staff Security Passcodes (Exact 6-Digit PINs)" data-bn="স্টাফ সিকিউরিটি পাসকোড (৬-ডিজিট পিন)">Staff Security Passcodes (Exact 6-Digit PINs)</span>
+                            </h3>
+                            <p class="text-xs text-on-surface-variant">Required by kitchen cooks, waiters, and cashiers when connecting their devices</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full border border-secondary/20">Active Passcode Guard</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                        <div>
+                            <label class="block font-bold mb-1">Kitchen Display PIN (6 Digits):</label>
+                            <div class="relative flex items-center">
+                                <input type="password" id="settingsKitchenPin" maxlength="6" minlength="6" placeholder="123456" class="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl outline-none font-bold tracking-widest text-sm">
+                                <button type="button" onclick="togglePinVisibility('settingsKitchenPin', this)" class="absolute right-3 text-gray-500 hover:text-black">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-bold mb-1">Waiter Desk PIN (6 Digits):</label>
+                            <div class="relative flex items-center">
+                                <input type="password" id="settingsWaiterPin" maxlength="6" minlength="6" placeholder="654321" class="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl outline-none font-bold tracking-widest text-sm">
+                                <button type="button" onclick="togglePinVisibility('settingsWaiterPin', this)" class="absolute right-3 text-gray-500 hover:text-black">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-bold mb-1 text-primary">Billing Counter PIN (6 Digits):</label>
+                            <div class="relative flex items-center">
+                                <input type="password" id="settingsBillingPin" maxlength="6" minlength="6" placeholder="999999" class="w-full px-3.5 py-2.5 bg-surface-bright border border-primary/40 rounded-xl outline-none font-bold tracking-widest text-sm text-primary">
+                                <button type="button" onclick="togglePinVisibility('settingsBillingPin', this)" class="absolute right-3 text-gray-500 hover:text-black">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="button" onclick="saveStaffPinsFromSettings()" class="py-2.5 px-6 bg-secondary text-white font-bold text-xs rounded-xl shadow-sm active:scale-98">
+                            <span class="lang-text" data-en="Save 6-Digit PINs" data-bn="৬-ডিজিট পিন সংরক্ষণ করুন">Save 6-Digit PINs</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-surface-container-lowest p-6 rounded-3xl border border-surface-container-highest shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b pb-3">
+                            <div>
+                                <h3 class="font-display font-bold text-base text-primary">Waiter Devices Pool</h3>
+                                <span class="text-xs text-on-surface-variant font-medium">Allowed up to 15 devices</span>
+                            </div>
+                            <span id="waiterSlotCountBadge" class="px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold rounded-xl border border-secondary/20">Protected</span>
+                        </div>
+                        <p class="text-gray-500 text-xs">PIN validation active on all waiter logins.</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest p-6 rounded-3xl border border-surface-container-highest shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b pb-3">
+                            <div>
+                                <h3 class="font-display font-bold text-base text-amber-700">Kitchen Screens (KDS)</h3>
+                                <span class="text-xs text-on-surface-variant font-medium">Allowed up to 4 screens</span>
+                            </div>
+                            <span id="kitchenSlotCountBadge" class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-xl border border-primary/20">Protected</span>
+                        </div>
+                        <p class="text-gray-500 text-xs">PIN validation active on all KDS logins.</p>
+                    </div>
+
+                    <div class="bg-surface-container-lowest p-6 rounded-3xl border border-surface-container-highest shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b pb-3">
+                            <div>
+                                <h3 class="font-display font-bold text-base text-secondary">Billing Counter POS</h3>
+                                <span class="text-xs text-on-surface-variant font-medium">Allowed up to 2 terminals</span>
+                            </div>
+                            <span class="px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold rounded-xl border border-secondary/20">Authorized</span>
+                        </div>
+                        <p class="text-gray-500 text-xs">PIN validation active on Billing POS logins.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= VIEW 6: TABLES & ZONES QR ================= -->
+            <div id="tablesTab" class="tab-view hidden space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-display font-bold text-xl text-on-surface"><span class="lang-text" data-en="Tables & Zones QR Management" data-bn="টেবিল ও জোন QR ম্যানেজমেন্ট">Tables & Zones QR Management</span></h2>
+                        <p class="text-xs text-on-surface-variant font-medium">Organize dining zones, activate/deactivate tables, and print QR standees.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="openCreateZoneModal()" class="px-4 py-2.5 rounded-xl border border-primary text-primary hover:bg-primary/5 font-bold text-xs flex items-center gap-1.5 transition-all">
+                            <span class="material-symbols-outlined text-sm">add_box</span> + New Zone
+                        </button>
+                        <button type="button" onclick="openAddTableModal()" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-display font-bold text-xs shadow-sm flex items-center gap-1.5 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-sm">add</span> + Add Table
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Operational Counter Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div class="bg-surface-container-lowest p-5 rounded-2xl border shadow-sm">
+                        <span class="text-[11px] font-bold text-gray-500 uppercase block mb-1">TOTAL TABLES</span>
+                        <h3 id="statTotalTablesCount" class="font-display font-bold text-3xl text-on-surface">0</h3>
+                        <p class="text-[10px] text-gray-400 mt-1">Configured tables</p>
+                    </div>
+                    <div class="bg-surface-container-lowest p-5 rounded-2xl border border-secondary/30 shadow-sm">
+                        <span class="text-[11px] font-bold text-secondary uppercase block mb-1">ACTIVE TABLES</span>
+                        <h3 id="statActiveTablesCount" class="font-display font-bold text-3xl text-secondary">0</h3>
+                        <p class="text-[10px] text-secondary mt-1">Open for customer ordering</p>
+                    </div>
+                    <div class="bg-surface-container-lowest p-5 rounded-2xl border border-error/30 shadow-sm">
+                        <span class="text-[11px] font-bold text-error uppercase block mb-1">INACTIVE / CLOSED</span>
+                        <h3 id="statInactiveTablesCount" class="font-display font-bold text-3xl text-error">0</h3>
+                        <p class="text-[10px] text-error mt-1">Blocked from QR scans</p>
+                    </div>
+                    <div class="bg-primary/5 p-5 rounded-2xl border border-primary/20 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <span class="text-[11px] font-bold text-primary uppercase block">RESTAURANT MAIN QR</span>
+                            <p class="text-[11px] text-gray-600 mt-0.5 font-medium">General menu without fixed table</p>
+                        </div>
+                        <button type="button" onclick="openGeneralMenuQRModal()" class="mt-2 py-2 px-3 bg-primary text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-sm">qr_code_2</span> Print Master Menu QR
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar" id="adminZoneFilterContainer">
+                    <button type="button" onclick="filterTablesByZone('all', this)" class="zone-pill active px-5 py-2 rounded-full font-bold text-xs bg-primary text-on-primary shadow-sm">All Zones</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="adminTablesGrid"></div>
+            </div>
+
+            <!-- ================= VIEW 7: RESTAURANT SETTINGS ================= -->
+            <div id="settingsTab" class="tab-view hidden space-y-6">
+                <div>
+                    <h2 class="font-display font-bold text-xl text-on-surface"><span class="lang-text" data-en="Restaurant Settings & Master Security" data-bn="রেস্তোরাঁ সেটিংস ও মাস্টার সিকিউরিটি">Restaurant Settings & Master Security</span></h2>
+                    <p class="text-xs text-on-surface-variant font-medium">Manage institutional details, logo, verified contact channels, GST credentials, and subscription tier.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <div class="lg:col-span-6 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-highest shadow-sm space-y-4">
+                        <h3 class="font-display font-bold text-sm text-on-surface border-b pb-2 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">storefront</span> Institutional Business Details
+                        </h3>
+
+                        <!-- LOGO UPDATE BOX -->
+                        <div class="p-3.5 bg-surface-container-low rounded-xl border border-surface-container-highest space-y-2">
+                            <label class="block font-display font-semibold text-xs text-on-surface">Restaurant Official Brand Logo</label>
+                            <div class="flex items-center gap-3">
+                                <div class="w-14 h-14 rounded-xl border border-outline-variant bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+                                    <img id="settingsLogoPreview" src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=120" class="w-full h-full object-cover" alt="Preview">
+                                </div>
+                                <div class="flex-1 space-y-1">
+                                    <input type="url" id="brandLogoInput" oninput="document.getElementById('settingsLogoPreview').src = this.value" placeholder="https://... logo image URL" class="w-full px-3 py-2 bg-surface-bright border border-outline-variant rounded-xl text-xs font-body outline-none focus:ring-1 focus:ring-primary">
+                                    <span class="text-[10px] text-gray-500 block">Paste direct image URL to update logo across billing & menus</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-display font-semibold text-xs text-on-surface mb-1.5">Official Restaurant Trade Name</label>
+                            <input type="text" id="brandNameInput" placeholder="OrderTrack Gastro Bar" class="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-xs font-body outline-none focus:ring-1 focus:ring-primary font-bold">
+                        </div>
+
+                        <!-- VERIFIED PHONE & EMAIL -->
+                        <div class="space-y-3 pt-1">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="font-display font-semibold text-xs text-on-surface">Helpline / Customer WhatsApp</label>
+                                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Verified ✓</span>
+                                </div>
+                                <input type="text" id="brandPhoneInput" placeholder="+91 9876543210" class="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-xs font-body outline-none focus:ring-1 focus:ring-primary font-bold">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="font-display font-semibold text-xs text-on-surface">Registered Work Email</label>
+                                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Verified ✓</span>
+                                </div>
+                                <input type="email" id="brandEmailInput" placeholder="admin@restaurant.com" class="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-xs font-body outline-none focus:ring-1 focus:ring-primary font-bold">
+                            </div>
+                        </div>
+
+                        <!-- 14 DIGIT FSSAI & REG NO -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-1">
+                                <label class="block font-bold text-xs text-amber-950">FSSAI License No. (১৪ সংখ্যা)</label>
+                                <input type="text" id="settingsFssaiInput" maxlength="14" placeholder="e.g. 12823019000123" class="w-full px-3 py-2 bg-white border rounded-xl text-xs font-mono font-bold text-gray-900 outline-none">
+                            </div>
+                            <div class="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                                <label class="block font-bold text-xs text-gray-800">Trade License / Reg No.</label>
+                                <input type="text" id="settingsRegNoInput" placeholder="e.g. TR/KOL/2026/094" class="w-full px-3 py-2 bg-white border rounded-xl text-xs font-bold text-gray-900 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- STRICT 15-CHAR GSTIN BOX & DYNAMIC GST RATE -->
+                        <div class="p-4 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5">
+                            <div class="flex justify-between items-center">
+                                <label class="block font-display font-semibold text-xs text-blue-950">Official GSTIN Number (Goods & Services Tax)</label>
+                                <span id="adminGstinBadge" class="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-gray-200 text-gray-700">Unverified</span>
+                            </div>
+                            <input type="text" id="brandGstinInput" oninput="verifyAdminGstin()" placeholder="e.g., 19AAAAA0000A1Z5" maxlength="15" class="w-full px-3.5 py-2.5 bg-white border border-outline-variant rounded-xl text-xs font-body outline-none focus:ring-1 focus:ring-primary font-bold uppercase">
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <div>
+                                    <label class="block font-bold text-xs text-blue-950 mb-1">Dynamic GST Rate Percentage (%)</label>
+                                    <input type="number" step="0.1" id="restoGstRate" value="5.0" class="w-full px-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold text-primary outline-none">
+                                </div>
+                                <div class="flex items-center pt-4">
+                                    <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-950">
+                                        <input type="checkbox" id="settingsChargeGstCheckbox" onchange="verifyAdminGstin()" class="w-4 h-4 rounded text-primary border-outline-variant">
+                                        <span>বিলে আলাদা GST চার্জ করুন</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SERVICE CHARGE & PACKAGING FEE -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="p-3 rounded-xl bg-surface-container-low border space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <label class="font-bold text-xs text-on-surface">Dine-in Service Charge</label>
+                                    <input type="checkbox" id="settingsEnableServiceCharge" class="rounded text-primary">
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="settingsServiceChargePercent" value="5" class="w-16 px-2 py-1 bg-white border rounded-lg text-xs font-bold text-center">
+                                    <span class="text-xs font-bold">%</span>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-surface-container-low border space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <label class="font-bold text-xs text-on-surface">Takeaway Packaging Fee</label>
+                                    <input type="checkbox" id="settingsEnablePackaging" checked class="rounded text-primary">
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs font-bold">₹</span>
+                                    <input type="number" id="settingsPackagingFee" value="15" class="w-20 px-2 py-1 bg-white border rounded-lg text-xs font-bold text-center">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-display font-semibold text-xs text-on-surface mb-1.5">Printed Address (On Bill Header)</label>
+                            <input type="text" id="brandAddressInput" placeholder="123 Gastronomy Lane, Kolkata - 700001" class="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-xs font-body outline-none focus:ring-1 focus:ring-primary">
+                        </div>
+
+                        <div>
+                            <label class="block font-display font-semibold text-xs text-on-surface mb-1.5">Official Bank UPI ID (Bank pa=...)</label>
+                            <input type="text" id="brandUpiInput" placeholder="restaurant@okaxis" class="w-full px-3.5 py-2.5 bg-surface-bright border border-secondary/40 rounded-xl text-xs font-body outline-none focus:ring-1 focus:ring-secondary font-bold text-secondary">
+                        </div>
+
+                        <button type="button" onclick="saveBrandingSettings()" class="w-full py-3 bg-primary hover:bg-primary-container text-on-primary font-bold text-xs rounded-xl shadow-sm active:scale-98 transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-sm">save</span> Save Restaurant Details & GST
+                        </button>
+                    </div>
+
+                    <!-- Right: Subscription Plan & Support -->
+                    <div class="lg:col-span-6 space-y-6">
+                        <!-- SUBSCRIPTION PLAN CARD -->
+                        <div class="bg-surface-container-lowest p-6 rounded-2xl border-2 border-primary shadow-sm space-y-3">
+                            <div class="flex justify-between items-center border-b pb-2">
+                                <div>
+                                    <h3 class="font-display font-bold text-sm text-on-surface flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-primary">verified</span> Active Subscription Plan
+                                    </h3>
+                                    <span class="text-[11px] text-gray-500 font-medium">Authorized to this restaurant workstation</span>
+                                </div>
+                                <span id="planStatusBadge" class="bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full">ACTIVE</span>
+                            </div>
+
+                            <div class="p-3.5 rounded-xl bg-surface-container-low border border-surface-container-highest flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-display font-extrabold text-base text-primary" id="cardPlanTierName">Professional Tier</h4>
+                                    <p class="text-[11px] text-on-surface-variant font-medium mt-0.5">₹4,999 / month • Full Hub Access</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-gray-500 block">Expires On:</span>
+                                    <span class="font-display font-bold text-xs text-on-surface" id="cardPlanExpiryDate">October 2, 2026</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1.5 text-xs pt-1">
+                                <span class="font-bold text-gray-900 text-[11px] block">Included In Your Plan:</span>
+                                <div class="grid grid-cols-2 gap-1.5 text-[11px] font-medium text-gray-800">
+                                    <span class="flex items-center gap-1"><span class="text-emerald-700 font-bold">✓</span> 15 Waiter Devices</span>
+                                    <span class="flex items-center gap-1"><span class="text-emerald-700 font-bold">✓</span> 4 Kitchen KDS</span>
+                                    <span class="flex items-center gap-1"><span class="text-emerald-700 font-bold">✓</span> Unlimited QR Standees</span>
+                                    <span class="flex items-center gap-1"><span class="text-emerald-700 font-bold">✓</span> 360° Floor Heatmap</span>
+                                    <span class="flex items-center gap-1"><span class="text-emerald-700 font-bold">✓</span> Split Cash/UPI POS</span>
+                                    <span class="flex items-center gap-1"><span class="text-emerald-700 font-bold">✓</span> WhatsApp Daily Summary</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 24/7 SUPPORT & HELP CARD -->
+                        <div class="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-highest shadow-sm space-y-2 text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">support_agent</span>
+                                <h4 class="font-display font-bold text-sm text-gray-900">OrderTrack Operations Support Bar</h4>
+                            </div>
+                            <p class="text-[11px] text-gray-500">Need urgent technical assistance with printers, KDS, or terminal sync? Contact us anytime.</p>
+                            <div class="pt-1 flex gap-2">
+                                <a href="https://wa.me/919876543210?text=Hello%20OrderTrack%20Support" target="_blank" class="flex-1 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-center font-bold flex items-center justify-center gap-1 hover:bg-emerald-100">
+                                    <span class="material-symbols-outlined text-xs">chat</span> WhatsApp Helpdesk
+                                </a>
+                                <a href="tel:+919876543210" class="flex-1 py-2.5 bg-surface-container rounded-lg text-center font-bold flex items-center justify-center gap-1 hover:bg-surface-container-high">
+                                    <span class="material-symbols-outlined text-xs">call</span> Direct Call
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- SECURE LOGOUT ACTION -->
+                        <button type="button" onclick="handleAdminLogout()" class="w-full py-3 rounded-xl bg-error/10 hover:bg-error/20 text-error font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-2xs">
+                            <span class="material-symbols-outlined text-sm">logout</span> Logout From Admin Master Panel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- CREATE COMBO MODAL -->
+    <div id="createComboModal" class="fixed inset-0 bg-black/65 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 max-w-lg w-full border border-surface-container-highest shadow-2xl space-y-4 max-h-[90vh] flex flex-col text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">fastfood</span>
+                    <h3 class="font-bold text-sm text-gray-900">Create New Combo Offer</h3>
+                </div>
+                <button type="button" onclick="closeCreateComboModal()"><span class="material-symbols-outlined text-sm">close</span></button>
+            </div>
+
+            <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+                <div>
+                    <label class="block font-bold mb-1">Combo Name * (e.g., Biryani Feast Combo)</label>
+                    <input type="text" id="comboNameInput" placeholder="Combo Title" class="w-full px-3 py-2 border rounded-xl outline-none font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold mb-1">Original Total (MRP ₹)</label>
+                        <input type="number" id="comboMrpInput" placeholder="380" class="w-full px-3 py-2 border rounded-xl outline-none text-gray-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Special Offer Price (₹) *</label>
+                        <input type="number" id="comboPriceInput" placeholder="299" class="w-full px-3 py-2 border rounded-xl outline-none font-bold text-primary">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Items Included in this Combo (মেনু আইটেম নির্বাচন করুন)</label>
+                    <div id="comboDishSelectorList" class="max-h-48 overflow-y-auto border rounded-xl p-2.5 space-y-1.5 bg-gray-50"></div>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Short Description / Pitch</label>
+                    <input type="text" id="comboDescInput" placeholder="e.g. Includes 1x Biryani, 1x Cold Drink" class="w-full px-3 py-2 border rounded-xl outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onclick="closeCreateComboModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-gray-100">Cancel</button>
+                <button type="button" onclick="saveNewComboPackage()" class="px-5 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-md">Publish Combo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE ZONE MODAL -->
+    <div id="createZoneModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest rounded-3xl p-6 max-w-sm w-full border border-surface-container-highest shadow-2xl space-y-4">
+            <h3 class="font-display font-bold text-sm text-on-surface border-b pb-2">Create New Dining Zone</h3>
+            <div>
+                <label class="block font-bold text-xs mb-1">Zone Name *</label>
+                <input type="text" id="inputNewZoneName" placeholder="e.g., Rooftop, AC Lounge, Garden" class="w-full px-3 py-2 border rounded-xl text-xs outline-none bg-surface-bright">
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onclick="closeCreateZoneModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-surface-container">Cancel</button>
+                <button type="button" onclick="saveNewZone()" class="px-5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-sm">Add Zone</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD TABLE MODAL -->
+    <div id="addTableModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest rounded-3xl p-6 max-w-sm w-full border border-surface-container-highest shadow-2xl space-y-4">
+            <h3 class="font-display font-bold text-sm text-on-surface border-b pb-2">Add New Dining Table</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block font-bold text-xs mb-1">Table Number *</label>
+                    <input type="text" id="inputNewTableNo" placeholder="e.g., 3, 4, Bar 1" class="w-full px-3 py-2 border rounded-xl text-xs outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-xs mb-1">Select Zone</label>
+                    <select id="inputNewTableZone" class="w-full px-3 py-2 border rounded-xl text-xs outline-none bg-surface-bright font-bold"></select>
+                </div>
+                <div>
+                    <label class="block font-bold text-xs mb-1">Seating Capacity</label>
+                    <input type="number" id="inputNewTableSeats" value="4" class="w-full px-3 py-2 border rounded-xl text-xs outline-none font-bold">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onclick="closeAddTableModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-surface-container">Cancel</button>
+                <button type="button" onclick="saveNewTable()" class="px-5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-sm">Add Table</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD / EDIT DISH MODAL -->
+    <div id="dishModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest rounded-3xl p-6 max-w-lg w-full border border-surface-container-highest shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 id="dishModalTitle" class="font-display font-bold text-sm text-on-surface">Add New Menu Item</h3>
+                <button type="button" onclick="closeDishModal()"><span class="material-symbols-outlined text-sm">close</span></button>
+            </div>
+            <input type="hidden" id="editDishKey" value="">
+            
+            <div class="space-y-4 pr-1 text-xs">
+                <!-- BOX 1 -->
+                <div class="p-4 bg-surface-container-low border border-surface-container-highest rounded-2xl space-y-3">
+                    <span class="text-[11px] font-bold text-primary uppercase tracking-wider block">1. Basic Item Details</span>
+                    <div>
+                        <label class="block font-bold mb-1">Item Name *</label>
+                        <input type="text" id="modalItemName" placeholder="Dish Name" class="w-full px-3 py-2 border rounded-xl outline-none bg-surface-bright font-bold">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-bold mb-1">Category *</label>
+                            <select id="modalItemCategory" class="w-full px-3 py-2 border rounded-xl outline-none bg-surface-bright font-bold cursor-pointer"></select>
+                            
+                            <div class="mt-1.5 flex items-center justify-between">
+                                <button type="button" onclick="toggleCustomCatField()" class="text-[11px] font-bold text-indigo-600 hover:underline flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-xs">add_circle</span> + Add New Category
+                                </button>
+                            </div>
+                            <div id="customCatBox" class="hidden mt-1.5 p-2 bg-indigo-50/70 rounded-xl border border-indigo-200 flex gap-1.5">
+                                <input type="text" id="customCatInput" placeholder="Type new category..." class="flex-1 px-2.5 py-1 text-xs border rounded-lg outline-none bg-white font-bold">
+                                <button type="button" onclick="saveCustomCategoryInline()" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold">Save</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-bold mb-1">Base Price (₹) *</label>
+                            <input type="number" id="modalItemPrice" placeholder="50" class="w-full px-3 py-2 border rounded-xl outline-none bg-surface-bright font-bold text-primary">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOX 2 -->
+                <div class="p-4 bg-surface-container-low border border-surface-container-highest rounded-2xl space-y-2">
+                    <span class="block font-bold text-gray-900">2. অর্ডার কোন বিভাগে যাবে? (Station Routing)</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 p-2.5 bg-white border rounded-xl cursor-pointer">
+                            <input type="radio" name="stationRouting" id="routeKitchenCook" value="kitchen" checked class="text-primary focus:ring-primary">
+                            <div>
+                                <span class="font-bold block text-gray-900">👨‍🍳 Kitchen Cook</span>
+                                <span class="text-[10px] text-gray-500">শেফের কিচেন স্ক্রিনে যাবে</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 bg-white border rounded-xl cursor-pointer">
+                            <input type="radio" name="stationRouting" id="routePantryDirect" value="pantry" class="text-primary focus:ring-primary">
+                            <div>
+                                <span class="font-bold block text-blue-900">🥤 Pantry Item</span>
+                                <span class="text-[10px] text-blue-700">কিচেন এড়িয়ে সরাসরি ওয়েটারে যাবে</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- BOX 3 -->
+                <div class="p-4 bg-surface-container-low border border-surface-container-highest rounded-2xl space-y-3">
+                    <span class="text-[11px] font-bold text-primary uppercase tracking-wider block">3. Media & Variants</span>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-bold mb-1">Dietary Type</label>
+                            <select id="modalItemType" class="w-full px-3 py-2 border rounded-xl outline-none bg-surface-bright font-bold">
+                                <option value="veg">🟢 Veg</option>
+                                <option value="non-veg" selected>🔴 Non-Veg</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold mb-1">Image URL</label>
+                            <input type="text" id="modalItemImg" placeholder="https://..." class="w-full px-3 py-2 border rounded-xl outline-none bg-surface-bright">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Description</label>
+                        <textarea id="modalItemDesc" placeholder="Short description..." rows="2" class="w-full px-3 py-2 border rounded-xl outline-none bg-surface-bright resize-none"></textarea>
+                    </div>
+
+                    <div class="pt-2 border-t border-surface-container-highest space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <label class="font-bold text-primary block">Extra Add-ons / Variants</label>
+                                <span class="text-[10px] text-gray-500 font-medium">Extra Cheese (+20), Extra Butter (+30)</span>
+                            </div>
+                            <button type="button" onclick="addNewAddonField()" class="px-2.5 py-1 bg-secondary text-white rounded-lg text-[10px] font-bold shadow-2xs">
+                                + Add Option
+                            </button>
+                        </div>
+                        <div id="addonsInputContainer" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t">
+                <button type="button" onclick="closeDishModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-surface-container">Cancel</button>
+                <button type="button" onclick="saveDishData()" class="px-5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-sm">Save Product</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR STANDEE PRINT MODAL -->
+    <div id="qrModalOverlay" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest rounded-3xl p-6 max-w-sm w-full border border-surface-container-highest shadow-2xl text-center space-y-4">
+            <div id="printableQRStandee" class="bg-white p-6 border-2 border-on-surface rounded-2xl text-center space-y-3 shadow-md mx-auto">
+                <span id="printBrandHeader" class="text-[11px] font-bold text-primary uppercase tracking-[0.2em] block mb-1">ORDERTRACK</span>
+                <div class="w-48 h-48 mx-auto p-2.5 bg-white rounded-xl border flex items-center justify-center shadow-inner overflow-hidden">
+                    <div id="qrcodeCanvasBox" class="w-full h-full flex items-center justify-center"></div>
+                </div>
+                <div>
+                    <h3 id="printTableNumber" class="font-display font-extrabold text-2xl text-on-surface mb-0.5">Table 01</h3>
+                    <p id="printZoneName" class="text-[11px] font-bold text-on-surface-variant">Main Dining</p>
+                    <p class="text-xs uppercase tracking-wider font-bold text-primary mt-1">Scan to Order Food</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeQRModal()" class="flex-1 py-2.5 rounded-xl bg-surface-container font-bold text-xs">Close</button>
+                <button type="button" onclick="window.print()" class="flex-1 py-2.5 bg-primary text-on-primary font-bold text-xs rounded-xl shadow-md">Print Standee</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERAL MENU & PARCEL QR MODAL -->
+    <div id="generalMenuModalOverlay" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest rounded-3xl p-6 max-w-sm w-full border border-surface-container-highest shadow-2xl text-center space-y-4">
+            <div class="border-b pb-2 flex justify-between items-center">
+                <h3 class="font-display font-bold text-sm text-on-surface">General / Parcel Takeaway QR</h3>
+                <button type="button" onclick="closeGeneralMenuQRModal()" class="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-sm">close</span></button>
+            </div>
+            <div class="bg-white p-6 border border-on-surface rounded-2xl text-center space-y-3 shadow-sm mx-auto">
+                <span id="printGeneralBrandHeader" class="text-[11px] font-bold text-primary uppercase tracking-[0.2em] block mb-1">ORDERTRACK</span>
+                <div class="w-48 h-48 mx-auto p-2.5 bg-white rounded-xl border flex items-center justify-center">
+                    <div id="generalMenuQrcodeBox" class="w-full h-full flex items-center justify-center"></div>
+                </div>
+                <div>
+                    <h3 class="font-display font-extrabold text-xl text-on-surface mb-0.5">Digital Menu & Takeaway</h3>
+                    <p class="text-xs uppercase tracking-wider font-bold text-amber-700">Scan for Parcel & Self-Order</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="window.open('../customer/index.html?mode=takeaway', '_blank')" class="flex-1 py-2.5 rounded-xl border border-primary text-primary font-bold text-xs">Open Menu</button>
+                <button type="button" onclick="window.print()" class="flex-1 py-2.5 bg-primary text-on-primary font-bold text-xs rounded-xl shadow-md">Print Standee</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCRIPT LOGIC ================= -->
+    <script>
+        const API_BASE_URL = "http://localhost:5000";
+        const RESTAURANT_ID = localStorage.getItem('CV_DEVICE_REST_ID') || "REST_001";
+
+        let rawMenuItems = {};
+        let rawTables = {};
+        let rawZones = ["Main Dining", "AC Lounge", "Patio", "Rooftop"];
+        let rawOrders = {}, rawCalls = {}, dirtyTablesMap = {}, rawSlots = {};
+        let rawCombos = {};
+        let currentSelectedZone = "all";
+        let currentLang = localStorage.getItem('OT_LANG') || 'en';
+        let globalBrand = { name: "Royal Bengal Bistro", logo: "", address: "", phone: "", email: "", gstin: "" };
+        let screenshotBarChartInstance = null;
+        let screenshotDonutChartInstance = null;
+        let customerFootfallChartInstance = null;
+
+        const socket = io(API_BASE_URL);
+
+        socket.on('connect', () => {
+            socket.emit('join_restaurant', RESTAURANT_ID);
+            fetchAllAdminData();
+        });
+
+        socket.on('new_order_placed', () => { fetchDashboardOrders(); });
+        socket.on('order_status_updated', () => { fetchDashboardOrders(); });
+        socket.on('order_voided', () => { fetchDashboardOrders(); fetchVoidLogs(); });
+
+        async function fetchAllAdminData() {
+            await fetchBranding();
+            await fetchDashboardOrders();
+            await fetchMenuItems();
+            await fetchTables();
+            await fetchZones();
+            await fetchCombos();
+            await fetchVoidLogs();
+            await loadSalesOverview(30);
+            applyLanguage();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'bn' : 'en';
+            localStorage.setItem('OT_LANG', currentLang);
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            document.getElementById('langLabel').innerText = currentLang === 'en' ? 'বাংলা' : 'English';
+            document.querySelectorAll('.lang-text').forEach(el => {
+                const text = el.getAttribute(`data-${currentLang}`);
+                if (text) el.innerText = text;
+            });
+        }
+
+        function checkValidGstin(gstin) {
+            const regex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+            return regex.test((gstin || '').trim().toUpperCase());
+        }
+
+        function verifyAdminGstin() {
+            const val = document.getElementById('brandGstinInput').value.trim().toUpperCase();
+            const badge = document.getElementById('adminGstinBadge');
+            const isChargeChecked = document.getElementById('settingsChargeGstCheckbox').checked;
+
+            if (checkValidGstin(val)) {
+                badge.className = "text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300";
+                badge.innerText = isChargeChecked ? "✓ Verified (5% Active)" : "✓ Verified (0% - Not Charged)";
+            } else if (val.length === 0) {
+                badge.className = "text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-gray-200 text-gray-700";
+                badge.innerText = "No GST (0%)";
+            } else {
+                badge.className = "text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-red-100 text-error border border-error/30";
+                badge.innerText = "Invalid GSTIN";
+            }
+        }
+
+        function switchAdminTab(tabId, btn) {
+            document.querySelectorAll('.tab-view').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('.nav-item-btn').forEach(b => {
+                b.classList.remove('active', 'bg-primary', 'text-on-primary', 'shadow-sm');
+                b.classList.add('text-on-surface-variant');
+            });
+            const activeTab = document.getElementById(tabId);
+            if(activeTab) activeTab.classList.remove('hidden');
+            if(btn) {
+                btn.classList.add('active', 'bg-primary', 'text-on-primary', 'shadow-sm');
+                btn.classList.remove('text-on-surface-variant');
+            }
+            if(tabId === 'analyticsTab') {
+                setTimeout(() => loadSalesOverview(document.getElementById('analyticsTimeFilter')?.value || 30), 50);
+            }
+        }
+
+        function togglePinVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') input.type = 'text';
+            else input.type = 'password';
+        }
+
+        async function fetchBranding() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/branding`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const data = await res.json();
+                    if(data) {
+                        if(data.name) {
+                            document.getElementById('topNavRestName').innerText = data.name;
+                            document.getElementById('brandNameInput').value = data.name;
+                            globalBrand.name = data.name;
+                        }
+                        if(data.logo) {
+                            globalBrand.logo = data.logo;
+                            document.getElementById('brandLogoInput').value = data.logo;
+                            document.getElementById('settingsLogoPreview').src = data.logo;
+                            document.getElementById('topNavUserAvatar').src = data.logo;
+                        }
+                        if(data.address) {
+                            document.getElementById('brandAddressInput').value = data.address;
+                            globalBrand.address = data.address;
+                        }
+                        if(data.phone) {
+                            document.getElementById('brandPhoneInput').value = data.phone;
+                            globalBrand.phone = data.phone;
+                        }
+                        if(data.email) {
+                            document.getElementById('brandEmailInput').value = data.email;
+                            globalBrand.email = data.email;
+                        }
+                        if(data.gstin) {
+                            document.getElementById('brandGstinInput').value = data.gstin;
+                            globalBrand.gstin = data.gstin;
+                        }
+                        if(data.upi_id) document.getElementById('brandUpiInput').value = data.upi_id;
+                        if(data.gst_rate) document.getElementById('restoGstRate').value = data.gst_rate;
+
+                        document.getElementById('settingsFssaiInput').value = data.fssai_lic_no || "";
+                        document.getElementById('settingsRegNoInput').value = data.trade_reg_no || "";
+                        document.getElementById('settingsChargeGstCheckbox').checked = !!data.charge_gst_to_customer;
+                        document.getElementById('settingsEnableServiceCharge').checked = !!data.enable_service_charge;
+                        document.getElementById('settingsServiceChargePercent').value = data.service_charge_percent || 5;
+                        document.getElementById('settingsEnablePackaging').checked = data.enable_packaging !== false;
+                        document.getElementById('settingsPackagingFee').value = data.packaging_fee !== undefined ? data.packaging_fee : 15;
+
+                        verifyAdminGstin();
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function saveBrandingSettings() {
+            const name = document.getElementById('brandNameInput').value.trim();
+            const logo = document.getElementById('brandLogoInput').value.trim();
+            const address = document.getElementById('brandAddressInput').value.trim();
+            const phone = document.getElementById('brandPhoneInput').value.trim();
+            const email = document.getElementById('brandEmailInput').value.trim();
+            const gstin = document.getElementById('brandGstinInput').value.trim().toUpperCase();
+            const upi_id = document.getElementById('brandUpiInput').value.trim();
+            const fssai_lic_no = document.getElementById('settingsFssaiInput').value.trim();
+            const trade_reg_no = document.getElementById('settingsRegNoInput').value.trim();
+            const gst_rate = parseFloat(document.getElementById('restoGstRate').value) || 5.0;
+            const charge_gst_to_customer = document.getElementById('settingsChargeGstCheckbox').checked;
+            const enable_service_charge = document.getElementById('settingsEnableServiceCharge').checked;
+            const service_charge_percent = parseFloat(document.getElementById('settingsServiceChargePercent').value) || 0;
+            const enable_packaging = document.getElementById('settingsEnablePackaging').checked;
+            const packaging_fee = parseFloat(document.getElementById('settingsPackagingFee').value) || 0;
+
+            if (gstin.length > 0 && !checkValidGstin(gstin)) {
+                alert("⚠️ দেওয়া GSTIN নম্বরটি সঠিক ভারত সরকারের ফরম্যাট অনুযায়ী নয়!");
+                return;
+            }
+
+            if (fssai_lic_no.length > 0 && fssai_lic_no.length !== 14) {
+                alert("⚠️ FSSAI লাইসেন্স নম্বর অবশ্যই ১৪ সংখ্যার হতে হবে!");
+                return;
+            }
+
+            try {
+                await fetch(`${API_BASE_URL}/api/branding`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({
+                        name, logo, address, phone, email, gstin, upi_id, gst_rate,
+                        fssai_lic_no, trade_reg_no, charge_gst_to_customer,
+                        enable_service_charge, service_charge_percent, enable_packaging, packaging_fee
+                    })
+                });
+                alert("🎉 Master Legal, Tax & Restaurant Details Saved!");
+            } catch(e) { alert("Failed to save settings."); }
+        }
+
+        async function fetchStaffPins() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/pins`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const pins = await res.json();
+                    if(pins) {
+                        if(pins.kitchen_pin) document.getElementById('settingsKitchenPin').value = pins.kitchen_pin;
+                        if(pins.waiter_pin) document.getElementById('settingsWaiterPin').value = pins.waiter_pin;
+                        if(pins.billing_pin) document.getElementById('settingsBillingPin').value = pins.billing_pin;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function saveStaffPinsFromSettings() {
+            const k = document.getElementById('settingsKitchenPin').value.trim();
+            const w = document.getElementById('settingsWaiterPin').value.trim();
+            const b = document.getElementById('settingsBillingPin').value.trim();
+
+            if (k.length !== 6 || w.length !== 6 || b.length !== 6 || isNaN(k) || isNaN(w) || isNaN(b)) {
+                alert("⚠️ সতর্কতা: কিচেন, ওয়েটার এবং বিলিং পিন ঠিক ৬ সংখ্যার হতে হবে!");
+                return;
+            }
+
+            try {
+                await fetch(`${API_BASE_URL}/api/pins`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ kitchen_pin: k, waiter_pin: w, billing_pin: b })
+                });
+                alert("🔒 6-Digit Staff & Billing PINs Updated!");
+            } catch(e) { alert("Failed to save PINs."); }
+        }
+
+        async function fetchDashboardOrders() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/orders?status=active`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const list = await res.json();
+                    rawOrders = {};
+                    list.forEach(o => { rawOrders[o.id] = o; });
+                }
+            } catch(e) {}
+            renderLiveFloorRadar();
+        }
+
+        function renderLiveFloorRadar() {
+            const grid = document.getElementById('adminLiveFloorGrid');
+            if(!grid) return;
+            grid.innerHTML = "";
+            const keys = Object.keys(rawTables);
+
+            let cookingTotal = 0, activeTotal = 0, dirtyTotal = 0, activeQrTotal = 0;
+
+            keys.forEach(t => {
+                const tableObj = rawTables[t] || {};
+                const isTableActive = tableObj.active !== false;
+                if (isTableActive) activeQrTotal++;
+
+                const tableOrders = Object.values(rawOrders).filter(o => (o.table_no == t || o.table == t) && o.status !== 'Served');
+                const isOccupied = tableOrders.length > 0;
+                const isDirty = dirtyTablesMap[t] === true;
+                const hasPending = tableOrders.some(o => o.status === 'Pending');
+
+                if(isOccupied) activeTotal++;
+                if(isDirty) dirtyTotal++;
+                tableOrders.forEach(o => { if(o.status === 'Pending') cookingTotal += (o.qty || 1); });
+
+                let border = "border-surface-container-highest";
+                let badge = "bg-surface-container text-gray-400";
+                let text = "Free";
+
+                if (isDirty) { border = "border-amber-400 bg-amber-50/50"; badge = "bg-amber-100 text-amber-800"; text = "Needs Clean"; }
+                else if (hasPending) { border = "border-amber-500"; badge = "bg-amber-100 text-amber-800"; text = "Cooking"; }
+                else if (isOccupied) { border = "border-secondary bg-secondary/5"; badge = "bg-secondary-container/40 text-secondary"; text = "Dining"; }
+
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-2xl border-2 ${border} flex flex-col justify-between h-28 text-center shadow-2xs relative`;
+                div.innerHTML = `
+                    <div class="flex justify-between items-center text-[10px] font-extrabold text-on-surface">
+                        <span>T-${t}</span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded-full ${badge}">${text}</span>
+                    </div>
+                    <span class="font-display font-bold text-xs text-on-surface">${tableOrders.length} Items</span>
+                    
+                    <button type="button" onclick="adminForceResetTable('${t}')" title="Clear Table" class="w-full py-1 bg-gray-100 hover:bg-red-50 hover:text-error text-[9px] font-bold rounded-lg transition-all border">
+                        Reset Table
+                    </button>
+                `;
+                grid.appendChild(div);
+            });
+
+            document.getElementById('dashStatActiveTables').innerText = activeTotal;
+            document.getElementById('dashStatCookingOrders').innerText = cookingTotal;
+            document.getElementById('dashStatDirtyTables').innerText = dirtyTotal;
+        }
+
+        async function adminForceResetTable(t) {
+            if (confirm(`Table ${t} কি সম্পূর্ণ রিসেট করে খালি করতে চান?`)) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/orders/table/${t}/clear`, {
+                        method: 'DELETE',
+                        headers: { 'x-restaurant-id': RESTAURANT_ID }
+                    });
+                    delete dirtyTablesMap[t];
+                    fetchDashboardOrders();
+                    alert(`✅ Table ${t} রিসেট করা হয়েছে!`);
+                } catch(e) { alert("Error clearing table"); }
+            }
+        }
+
+        async function fetchCombos() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/combos`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const list = await res.json();
+                    rawCombos = {};
+                    list.forEach(c => { rawCombos[c.id] = c; });
+                }
+            } catch(e) {}
+            renderAdminCombos();
+        }
+
+        function openCreateComboModal() {
+            const list = document.getElementById('comboDishSelectorList');
+            list.innerHTML = "";
+
+            for (let k in rawMenuItems) {
+                const d = rawMenuItems[k];
+                list.innerHTML += `
+                    <label class="flex items-center justify-between p-2 rounded-lg bg-white border cursor-pointer">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" value="${d.name}" data-price="${d.price}" class="combo-dish-check rounded text-primary">
+                            <span class="font-bold text-gray-800">${d.name}</span>
+                        </div>
+                        <span class="font-bold text-gray-500">₹${d.price}</span>
+                    </label>
+                `;
+            }
+
+            document.getElementById('comboNameInput').value = "";
+            document.getElementById('comboPriceInput').value = "";
+            document.getElementById('comboMrpInput').value = "";
+            document.getElementById('comboDescInput').value = "";
+
+            document.getElementById('createComboModal').classList.remove('hidden');
+            document.getElementById('createComboModal').classList.add('flex');
+        }
+
+        function closeCreateComboModal() {
+            document.getElementById('createComboModal').classList.add('hidden');
+            document.getElementById('createComboModal').classList.remove('flex');
+        }
+
+        async function saveNewComboPackage() {
+            const name = document.getElementById('comboNameInput').value.trim();
+            const price = parseFloat(document.getElementById('comboPriceInput').value) || 0;
+            const mrp = parseFloat(document.getElementById('comboMrpInput').value) || price;
+            const desc = document.getElementById('comboDescInput').value.trim();
+
+            const selectedDishes = [];
+            document.querySelectorAll('.combo-dish-check:checked').forEach(cb => {
+                selectedDishes.push(cb.value);
+            });
+
+            if (!name || price <= 0 || selectedDishes.length < 2) {
+                alert("কম্বোর জন্য অন্তত ২টি খাবার নির্বাচন করুন এবং সঠিক দাম দিন!");
+                return;
+            }
+
+            try {
+                await fetch(`${API_BASE_URL}/api/combos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({
+                        title: name,
+                        offer_price: price,
+                        mrp,
+                        description: desc,
+                        included_dishes: selectedDishes,
+                        active: true
+                    })
+                });
+                closeCreateComboModal();
+                fetchCombos();
+                alert("🎉 নতুন কম্বো সফলভাবে তৈরি হয়েছে!");
+            } catch(e) { alert("Failed to save combo."); }
+        }
+
+        function renderAdminCombos() {
+            const container = document.getElementById('adminCombosListGrid');
+            if (!container) return;
+            container.innerHTML = "";
+
+            const keys = Object.keys(rawCombos);
+            document.getElementById('activeCombosCountBadge').innerText = `${keys.length} Combos`;
+
+            if (keys.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-4 text-gray-400">কোনো কম্বো প্যাকেজ নেই। উপরে "+ Create Combo" চাপুন।</div>`;
+                return;
+            }
+
+            keys.forEach(k => {
+                const c = rawCombos[k];
+                const card = document.createElement('div');
+                card.className = "bg-white p-3.5 rounded-2xl border border-amber-200/80 shadow-xs space-y-2";
+                const dishesList = Array.isArray(c.included_dishes) ? c.included_dishes : [];
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-xs text-gray-900">${c.title || c.name}</h4>
+                            <p class="text-[10px] text-gray-500 mt-0.5">${c.description || c.desc || ''}</p>
+                        </div>
+                        <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}">
+                            ${c.active ? 'Active' : 'Disabled'}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-sm text-primary">₹${c.offer_price || c.price}</span>
+                        ${c.mrp > (c.offer_price || c.price) ? `<span class="text-[10px] text-gray-400 line-through">₹${c.mrp}</span>` : ''}
+                    </div>
+                    <div class="pt-1.5 border-t flex flex-wrap gap-1">
+                        ${dishesList.map(d => `<span class="px-1.5 py-0.2 bg-gray-100 rounded text-[9px] font-medium">${d}</span>`).join('')}
+                    </div>
+                    <div class="pt-1.5 flex justify-end gap-2 border-t text-[11px]">
+                        <button onclick="toggleComboStatus('${k}', ${c.active})" class="font-bold text-gray-600 hover:underline">
+                            ${c.active ? 'Disable' : 'Enable'}
+                        </button>
+                        <button onclick="deleteCombo('${k}')" class="font-bold text-error hover:underline">
+                            Delete
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function toggleComboStatus(k, status) {
+            try {
+                await fetch(`${API_BASE_URL}/api/combos/${k}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ active: !status })
+                });
+                fetchCombos();
+            } catch(e) {}
+        }
+
+        async function deleteCombo(k) {
+            if(confirm("Delete this combo package?")) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/combos/${k}`, {
+                        method: 'DELETE',
+                        headers: { 'x-restaurant-id': RESTAURANT_ID }
+                    });
+                    fetchCombos();
+                } catch(e) {}
+            }
+        }
+
+        async function fetchVoidLogs() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/orders/void-logs`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const logs = await res.json();
+                    const tbody = document.getElementById('securityVoidLogsTableBody');
+                    tbody.innerHTML = "";
+
+                    if (!logs || logs.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">কোনো খাবার বাতিলের রেকর্ড নেই।</td></tr>`;
+                        return;
+                    }
+
+                    logs.forEach(l => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="font-mono text-gray-600">${new Date(l.created_at || Date.now()).toLocaleString()}</td>
+                            <td class="font-bold text-primary">Table ${l.table_no || l.table || '1'}</td>
+                            <td class="font-bold text-gray-900">${l.item_name || l.item}</td>
+                            <td class="text-error font-bold">${l.reason || 'Cancelled'}</td>
+                            <td class="text-gray-500">${l.additional_note || l.note || '-'}</td>
+                            <td class="font-mono text-gray-400">${l.staff_device_id || l.waiterDevice || 'POS'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch(e) {}
+        }
+
+        async function clearOldVoidLogs() {
+            if (confirm("৩০ দিনের পুরনো সব ক্যানসেল লগ মুছে ফেলবেন?")) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/orders/void-logs`, {
+                        method: 'DELETE',
+                        headers: { 'x-restaurant-id': RESTAURANT_ID }
+                    });
+                    fetchVoidLogs();
+                } catch(e) {}
+            }
+        }
+
+        async function fetchMenuItems() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/menu`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const list = await res.json();
+                    rawMenuItems = {};
+                    list.forEach(item => { rawMenuItems[item.id] = item; });
+                }
+            } catch(e) {}
+            renderAdminMenuTable(rawMenuItems);
+            renderCategoryFilters(rawMenuItems);
+            updateCategoryDropdownOptions(rawMenuItems);
+        }
+
+        function updateCategoryDropdownOptions(items) {
+            const select = document.getElementById('modalItemCategory');
+            if (!select) return;
+            const defaultCats = ['Mains', 'Starters', 'Beverages', 'Desserts'];
+            const allCats = new Set(defaultCats);
+            Object.values(items).forEach(i => { if(i.category) allCats.add(i.category); });
+            const currentVal = select.value;
+            select.innerHTML = "";
+            allCats.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat; opt.innerText = cat;
+                select.appendChild(opt);
+            });
+            if(allCats.has(currentVal)) select.value = currentVal;
+        }
+
+        function toggleCustomCatField() {
+            const box = document.getElementById('customCatBox');
+            box.classList.toggle('hidden');
+            if(!box.classList.contains('hidden')) {
+                document.getElementById('customCatInput').focus();
+            }
+        }
+
+        function saveCustomCategoryInline() {
+            const input = document.getElementById('customCatInput');
+            const catName = input.value.trim();
+            if(!catName) return alert("Please type a category name!");
+            
+            const select = document.getElementById('modalItemCategory');
+            const opt = document.createElement('option');
+            opt.value = catName; opt.innerText = catName;
+            select.appendChild(opt);
+            select.value = catName;
+
+            input.value = "";
+            document.getElementById('customCatBox').classList.add('hidden');
+            alert(`✅ '${catName}' ক্যাটাগরি তৈরি ও সিলেক্ট করা হয়েছে!`);
+        }
+
+        function renderCategoryFilters(items) {
+            const container = document.getElementById('adminCategoryFilters');
+            if(!container) return;
+            const cats = new Set(['all']);
+            Object.values(items).forEach(i => { if(i.category) cats.add(i.category); });
+            container.innerHTML = "";
+            cats.forEach(c => {
+                const btn = document.createElement('button');
+                btn.type = "button";
+                btn.className = `menu-filter-pill ${c === 'all' ? 'active bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant'} px-4 py-2 rounded-full font-bold text-xs shadow-sm`;
+                btn.innerText = c === 'all' ? 'All Items' : c;
+                btn.onclick = () => filterMenuCategory(c, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function filterMenuCategory(cat, btn) {
+            document.querySelectorAll('.menu-filter-pill').forEach(b => {
+                b.className = "menu-filter-pill bg-surface-container-lowest text-on-surface-variant border border-outline-variant px-4 py-2 rounded-full font-semibold text-xs";
+            });
+            if(btn) btn.className = "menu-filter-pill active bg-primary text-on-primary px-4 py-2 rounded-full font-bold text-xs shadow-sm";
+            if(cat === 'all') renderAdminMenuTable(rawMenuItems);
+            else {
+                const filtered = {};
+                for(let k in rawMenuItems) if(rawMenuItems[k].category === cat) filtered[k] = rawMenuItems[k];
+                renderAdminMenuTable(filtered);
+            }
+        }
+
+        function filterAdminMenuTable() {
+            const q = document.getElementById('adminMenuSearch').value.toLowerCase();
+            const filtered = {};
+            for(let k in rawMenuItems) if(rawMenuItems[k].name && rawMenuItems[k].name.toLowerCase().includes(q)) filtered[k] = rawMenuItems[k];
+            renderAdminMenuTable(filtered);
+        }
+
+        function renderAdminMenuTable(items) {
+            const tbody = document.getElementById('adminMenuTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = "";
+            const keys = Object.keys(items);
+            if(keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-on-surface-variant font-medium">No menu items found.</td></tr>`;
+                return;
+            }
+            keys.forEach(key => {
+                const item = items[key];
+                const isVeg = (item.diet_type || item.type) === 'veg';
+                const isStock = item.available !== false;
+                const isPantry = item.is_pantry === true || item.isPantry === true;
+                const addons = item.addons || [];
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-surface-container-lowest transition-colors ${!isStock ? 'opacity-60 bg-gray-50' : ''}`;
+                tr.innerHTML = `
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${item.image_url || item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100'}" class="w-10 h-10 rounded-lg object-cover bg-surface-container flex-shrink-0" alt="${item.name}">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-3 h-3 border ${isVeg ? 'border-secondary' : 'border-primary'} flex items-center justify-center p-[1px] rounded-[2px] flex-shrink-0">
+                                        <div class="w-full h-full rounded-full ${isVeg ? 'bg-secondary' : 'bg-primary'}"></div>
+                                    </div>
+                                    <span class="font-display font-bold text-xs text-on-surface">${item.name}</span>
+                                </div>
+                                <p class="text-[11px] text-on-surface-variant truncate max-w-[200px]">${item.description || item.desc || ''}</p>
+                                ${addons.length > 0 ? `
+                                    <div class="mt-1 flex flex-wrap gap-1">
+                                        ${addons.map(a => `<span class="px-1.5 py-0.5 bg-surface-container-high rounded text-[9px] font-bold text-gray-700">+${a.addon_name || a.name} (₹${a.addon_price || a.price})</span>`).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4 text-on-surface-variant font-medium">${item.category || 'Mains'}</td>
+                    <td class="p-4 font-display font-bold text-on-surface">₹${item.price}</td>
+                    <td class="p-4">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPantry ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}">
+                            ${isPantry ? '🥤 Pantry Item' : '👨‍🍳 Kitchen Cook'}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        <button type="button" onclick="toggleItemStock('${key}', ${isStock})" class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-[11px] font-bold ${isStock ? 'bg-secondary-container/40 text-secondary border border-secondary/30' : 'bg-red-100 text-error border border-error/30'}">
+                            <span class="w-2 h-2 rounded-full ${isStock ? 'bg-secondary' : 'bg-error'}"></span> ${isStock ? 'In Stock' : 'Out of Stock'}
+                        </button>
+                    </td>
+                    <td class="p-4 text-right">
+                        <div class="flex items-center justify-end gap-1">
+                            <button type="button" onclick="openDishModal('edit', '${key}')" class="p-2 text-on-surface-variant hover:text-primary rounded-lg hover:bg-surface-container">
+                                <span class="material-symbols-outlined text-base">edit</span>
+                            </button>
+                            <button type="button" onclick="deleteMenuItem('${key}')" class="p-2 text-on-surface-variant hover:text-error rounded-lg hover:bg-error-container/20">
+                                <span class="material-symbols-outlined text-base">delete</span>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function toggleItemStock(key, currentStatus) {
+            try {
+                await fetch(`${API_BASE_URL}/api/menu/${key}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ available: !currentStatus })
+                });
+                fetchMenuItems();
+            } catch(e) {}
+        }
+
+        async function deleteMenuItem(key) {
+            if(confirm("Are you sure you want to remove this dish?")) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/menu/${key}`, {
+                        method: 'DELETE',
+                        headers: { 'x-restaurant-id': RESTAURANT_ID }
+                    });
+                    fetchMenuItems();
+                } catch(e) {}
+            }
+        }
+
+        function addNewAddonField(nameVal = "", priceVal = "") {
+            const container = document.getElementById('addonsInputContainer');
+            const row = document.createElement('div');
+            row.className = "flex items-center gap-2 addon-row";
+            row.innerHTML = `
+                <input type="text" placeholder="Add-on (e.g. Extra Cheese)" value="${nameVal}" class="addon-name flex-1 px-2.5 py-1.5 bg-surface border rounded-xl outline-none font-bold text-xs">
+                <input type="number" placeholder="₹ Price" value="${priceVal}" class="addon-price w-20 px-2 py-1.5 bg-surface border rounded-xl outline-none font-bold text-xs text-primary">
+                <button type="button" onclick="this.parentElement.remove()" class="p-1 text-error hover:bg-red-50 rounded"><span class="material-symbols-outlined text-sm">remove_circle</span></button>
+            `;
+            container.appendChild(row);
+        }
+
+        function openDishModal(mode, key) {
+            document.getElementById('dishModal').classList.remove('hidden');
+            document.getElementById('dishModal').classList.add('flex');
+            document.getElementById('customCatBox').classList.add('hidden');
+            document.getElementById('customCatInput').value = "";
+            document.getElementById('addonsInputContainer').innerHTML = "";
+
+            if(mode === 'edit' && key && rawMenuItems[key]) {
+                const item = rawMenuItems[key];
+                document.getElementById('dishModalTitle').innerText = "Edit Menu Item";
+                document.getElementById('editDishKey').value = key;
+                document.getElementById('modalItemName').value = item.name || '';
+                document.getElementById('modalItemPrice').value = item.price || '';
+                document.getElementById('modalItemCategory').value = item.category || 'Mains';
+                document.getElementById('modalItemType').value = (item.diet_type || item.type) || 'non-veg';
+                document.getElementById('modalItemDesc').value = item.description || item.desc || '';
+                document.getElementById('modalItemImg').value = item.image_url || item.img || '';
+
+                if (item.is_pantry || item.isPantry) {
+                    document.getElementById('routePantryDirect').checked = true;
+                } else {
+                    document.getElementById('routeKitchenCook').checked = true;
+                }
+
+                if(item.addons && Array.isArray(item.addons)) {
+                    item.addons.forEach(a => addNewAddonField(a.addon_name || a.name, a.addon_price || a.price));
+                }
+            } else {
+                document.getElementById('dishModalTitle').innerText = "Add New Menu Item";
+                document.getElementById('editDishKey').value = "";
+                document.getElementById('modalItemName').value = "";
+                document.getElementById('modalItemPrice').value = "";
+                document.getElementById('modalItemDesc').value = "";
+                document.getElementById('modalItemImg').value = "";
+                document.getElementById('routeKitchenCook').checked = true;
+                addNewAddonField("Extra Cheese", "20");
+            }
+        }
+
+        function closeDishModal() {
+            document.getElementById('dishModal').classList.add('hidden');
+            document.getElementById('dishModal').classList.remove('flex');
+        }
+
+        async function saveDishData() {
+            const key = document.getElementById('editDishKey').value;
+            const name = document.getElementById('modalItemName').value.trim();
+            const category = document.getElementById('modalItemCategory').value;
+            const price = parseFloat(document.getElementById('modalItemPrice').value);
+            const diet_type = document.getElementById('modalItemType').value;
+            const description = document.getElementById('modalItemDesc').value.trim();
+            const image_url = document.getElementById('modalItemImg').value.trim() || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c";
+            const is_pantry = document.getElementById('routePantryDirect').checked;
+
+            if(!name || isNaN(price)) { alert("Please enter valid name and price!"); return; }
+
+            const addons = [];
+            document.querySelectorAll('.addon-row').forEach(row => {
+                const aName = row.querySelector('.addon-name').value.trim();
+                const aPrice = parseFloat(row.querySelector('.addon-price').value);
+                if (aName && !isNaN(aPrice)) addons.push({ addon_name: aName, addon_price: aPrice });
+            });
+
+            const payload = { name, category, price, diet_type, description, image_url, addons, is_pantry, available: true };
+            try {
+                const url = key ? `${API_BASE_URL}/api/menu/${key}` : `${API_BASE_URL}/api/menu`;
+                const method = key ? 'PATCH' : 'POST';
+                await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify(payload)
+                });
+                closeDishModal();
+                fetchMenuItems();
+            } catch(e) {}
+        }
+
+        async function fetchZones() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/zones`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const list = await res.json();
+                    rawZones = list.map(z => z.zone_name);
+                }
+            } catch(e) {}
+            if(rawZones.length === 0) rawZones = ["Main Dining", "AC Lounge", "Patio", "Rooftop"];
+            renderZonesFilter();
+            updateZoneSelectDropdown();
+        }
+
+        async function fetchTables() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/tables`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const list = await res.json();
+                    rawTables = {};
+                    list.forEach(t => { rawTables[t.table_no] = t; });
+                }
+            } catch(e) {}
+            renderTablesGrid(rawTables);
+            renderLiveFloorRadar();
+        }
+
+        function renderZonesFilter() {
+            const container = document.getElementById('adminZoneFilterContainer');
+            if(!container) return;
+            container.innerHTML = "";
+            const allBtn = document.createElement('button');
+            allBtn.className = `zone-pill ${currentSelectedZone === 'all' ? 'active bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant'} px-5 py-2 rounded-full font-bold text-xs shadow-sm`;
+            allBtn.innerText = "All Zones";
+            allBtn.onclick = () => filterTablesByZone('all', allBtn);
+            container.appendChild(allBtn);
+
+            rawZones.forEach(zone => {
+                const btn = document.createElement('button');
+                btn.className = `zone-pill ${currentSelectedZone === zone ? 'active bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant'} px-5 py-2 rounded-full font-semibold text-xs`;
+                btn.innerText = zone;
+                btn.onclick = () => filterTablesByZone(zone, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function filterTablesByZone(zone, btn) {
+            currentSelectedZone = zone;
+            document.querySelectorAll('.zone-pill').forEach(b => {
+                b.className = "zone-pill bg-surface-container-lowest text-on-surface-variant border border-outline-variant px-5 py-2 rounded-full font-semibold text-xs";
+            });
+            if(btn) btn.className = "zone-pill active bg-primary text-on-primary px-5 py-2 rounded-full font-bold text-xs shadow-sm";
+            renderTablesGrid(rawTables);
+        }
+
+        function updateZoneSelectDropdown() {
+            const select = document.getElementById('inputNewTableZone');
+            if(!select) return;
+            select.innerHTML = "";
+            rawZones.forEach(z => {
+                const opt = document.createElement('option');
+                opt.value = z; opt.innerText = z;
+                select.appendChild(opt);
+            });
+        }
+
+        function openCreateZoneModal() {
+            document.getElementById('createZoneModal').classList.remove('hidden');
+            document.getElementById('createZoneModal').classList.add('flex');
+        }
+        function closeCreateZoneModal() {
+            document.getElementById('createZoneModal').classList.add('hidden');
+            document.getElementById('createZoneModal').classList.remove('flex');
+        }
+        async function saveNewZone() {
+            const name = document.getElementById('inputNewZoneName').value.trim();
+            if(!name) { alert("Please type a zone name!"); return; }
+            try {
+                await fetch(`${API_BASE_URL}/api/zones`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ zone_name: name })
+                });
+                closeCreateZoneModal();
+                document.getElementById('inputNewZoneName').value = "";
+                fetchZones();
+            } catch(e) {}
+        }
+
+        function openAddTableModal() {
+            updateZoneSelectDropdown();
+            document.getElementById('addTableModal').classList.remove('hidden');
+            document.getElementById('addTableModal').classList.add('flex');
+        }
+        function closeAddTableModal() {
+            document.getElementById('addTableModal').classList.add('hidden');
+            document.getElementById('addTableModal').classList.remove('flex');
+        }
+        async function saveNewTable() {
+            const no = document.getElementById('inputNewTableNo').value.trim();
+            const zone = document.getElementById('inputNewTableZone').value || (rawZones[0] || "Main Dining");
+            const seats = parseInt(document.getElementById('inputNewTableSeats').value) || 4;
+            if(!no) { alert("Please enter table number!"); return; }
+
+            try {
+                await fetch(`${API_BASE_URL}/api/tables`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ table_no: no, zone, seats, active: true })
+                });
+                closeAddTableModal();
+                document.getElementById('inputNewTableNo').value = "";
+                fetchTables();
+            } catch(e) {}
+        }
+
+        function renderTablesGrid(tables) {
+            const grid = document.getElementById('adminTablesGrid');
+            if(!grid) return;
+            grid.innerHTML = "";
+            const keys = Object.keys(tables);
+
+            keys.forEach(no => {
+                const t = tables[no];
+                const isActive = t.active !== false;
+                if(currentSelectedZone !== 'all' && (t.zone || 'Main Dining') !== currentSelectedZone) return;
+
+                const card = document.createElement('div');
+                card.className = `bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm relative overflow-hidden flex flex-col justify-between h-48 transition-all ${!isActive ? 'opacity-60 bg-gray-50' : ''}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold text-primary uppercase tracking-wider">${t.zone || 'Main Dining'}</span>
+                            <h3 class="font-display font-bold text-xl text-on-surface">Table ${no}</h3>
+                            <p class="text-xs text-on-surface-variant font-medium mt-0.5">${t.seats || 4} Seats Capacity</p>
+                        </div>
+                        <button type="button" onclick="toggleTableActive('${no}', ${isActive})" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isActive ? 'bg-secondary-container/50 text-secondary' : 'bg-red-100 text-error'} border ${isActive ? 'border-secondary/30' : 'border-error/30'}">
+                            <span class="w-2 h-2 rounded-full ${isActive ? 'bg-secondary' : 'bg-error'}"></span>
+                            <span>${isActive ? 'Active' : 'Inactive'}</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-2 border-t border-surface-container-highest">
+                        <button type="button" onclick="openTableQRModal('${no}', '${t.zone || 'Main Dining'}')" class="flex-1 py-2.5 rounded-xl border border-primary text-primary hover:bg-primary/5 font-display font-bold text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <span class="material-symbols-outlined text-base">qr_code_2</span> Print Standee
+                        </button>
+                        <button type="button" onclick="deleteTable('${no}')" title="Delete Table" class="w-10 h-10 rounded-xl border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all">
+                            <span class="material-symbols-outlined text-base">delete</span>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function toggleTableActive(no, currentStatus) {
+            try {
+                await fetch(`${API_BASE_URL}/api/tables/${no}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ active: !currentStatus })
+                });
+                fetchTables();
+            } catch(e) {}
+        }
+
+        async function deleteTable(no) {
+            if(confirm(`Delete Table ${no}?`)) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/tables/${no}`, {
+                        method: 'DELETE',
+                        headers: { 'x-restaurant-id': RESTAURANT_ID }
+                    });
+                    fetchTables();
+                } catch(e) {}
+            }
+        }
+
+        function openTableQRModal(tableNo, zoneName) {
+            const fullURL = `${window.location.origin}/src/customer/index.html?table=${encodeURIComponent(tableNo)}`;
+            document.getElementById('printBrandHeader').innerText = (globalBrand.name || "ORDERTRACK").toUpperCase();
+            document.getElementById('printTableNumber').innerText = `Table ${tableNo}`;
+            document.getElementById('printZoneName').innerText = zoneName || "Main Dining";
+
+            const box = document.getElementById('qrcodeCanvasBox');
+            box.innerHTML = "";
+            try {
+                if (typeof QRCode !== 'undefined') {
+                    new QRCode(box, { text: fullURL, width: 175, height: 175, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+                } else {
+                    throw new Error("Offline");
+                }
+            } catch(e) {
+                box.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=175x175&data=${encodeURIComponent(fullURL)}" class="w-full h-full object-contain" alt="QR">`;
+            }
+            document.getElementById('qrModalOverlay').classList.remove('hidden');
+            document.getElementById('qrModalOverlay').classList.add('flex');
+        }
+        function closeQRModal() {
+            document.getElementById('qrModalOverlay').classList.add('hidden');
+            document.getElementById('qrModalOverlay').classList.remove('flex');
+        }
+
+        function openGeneralMenuQRModal() {
+            const generalURL = `${window.location.origin}/src/customer/index.html?mode=takeaway`;
+            document.getElementById('printGeneralBrandHeader').innerText = (globalBrand.name || "ORDERTRACK").toUpperCase();
+            const box = document.getElementById('generalMenuQrcodeBox');
+            box.innerHTML = "";
+            try {
+                if (typeof QRCode !== 'undefined') {
+                    new QRCode(box, { text: generalURL, width: 175, height: 175, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+                } else {
+                    throw new Error("Offline");
+                }
+            } catch(e) {
+                box.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=175x175&data=${encodeURIComponent(generalURL)}" class="w-full h-full object-contain" alt="QR">`;
+            }
+            document.getElementById('generalMenuModalOverlay').classList.remove('hidden');
+            document.getElementById('generalMenuModalOverlay').classList.add('flex');
+        }
+        function closeGeneralMenuQRModal() {
+            document.getElementById('generalMenuModalOverlay').classList.add('hidden');
+            document.getElementById('generalMenuModalOverlay').classList.remove('flex');
+        }
+
+        async function loadSalesOverview(days) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/sales/history?days=${days}`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if(res.ok) {
+                    const list = await res.json();
+                    currentSalesData = {};
+                    list.forEach(r => { currentSalesData[r.invoice_no] = r; });
+                }
+            } catch(e) {}
+            renderAnalyticsCards(days);
+        }
+
+        function renderAnalyticsCards(days) {
+            let rev = 0, count = 0;
+            let upiRev = 0, cashRev = 0;
+            let totalDiscount = 0, totalTax = 0;
+            const now = Date.now();
+            filteredRecordsCache = [];
+            const itemMap = {};
+            const dateRevenueMap = {};
+            const dateCustomerMap = {};
+            const categoryRevenueMap = { 'Mains': 0, 'Starters': 0, 'Beverages': 0 };
+
+            for(let k in currentSalesData) {
+                const r = currentSalesData[k];
+                const finalAmount = parseFloat(r.grand_total || r.price || 0);
+                rev += finalAmount;
+                count++;
+                totalDiscount += parseFloat(r.discount || 0);
+                totalTax += (parseFloat(r.cgst || 0) + parseFloat(r.sgst || 0) || r.tax || 0);
+                filteredRecordsCache.push({ key: k, ...r });
+
+                if((r.payment_mode || r.paymentMethod || '').toLowerCase().includes('cash')) {
+                    cashRev += finalAmount;
+                } else {
+                    upiRev += finalAmount;
+                }
+
+                const dStr = new Date(r.created_at || now).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                dateRevenueMap[dStr] = (dateRevenueMap[dStr] || 0) + finalAmount;
+                dateCustomerMap[dStr] = (dateCustomerMap[dStr] || 0) + 1;
+            }
+
+            const avgBill = count > 0 ? Math.round(rev / count) : 0;
+            const upiRatio = rev > 0 ? Math.round((upiRev / rev) * 100) : 0;
+            const cashRatio = rev > 0 ? Math.round((cashRev / rev) * 100) : 0;
+
+            document.getElementById('statTotalRevenue').innerText = `₹${rev}`;
+            document.getElementById('statAvgBillAmount').innerText = `₹${avgBill}`;
+            document.getElementById('statTotalCustomersCount').innerText = `${count}`;
+            document.getElementById('summaryUpiRev').innerText = `₹${upiRev}`;
+            document.getElementById('upiShareRatio').innerText = `${upiRatio}% of total volume`;
+
+            document.getElementById('valUpiAmount').innerText = `₹${upiRev} (${upiRatio}%)`;
+            document.getElementById('valCashAmount').innerText = `₹${cashRev} (${cashRatio}%)`;
+            document.getElementById('barUpiRatio').style.width = `${upiRatio}%`;
+            document.getElementById('barCashRatio').style.width = `${cashRatio}%`;
+
+            document.getElementById('soldItemsCountBadge').innerText = `${filteredRecordsCache.length} Invoices`;
+            document.getElementById('summaryTotalBills').innerText = `${count}`;
+            document.getElementById('summaryTotalDiscounts').innerText = `₹${totalDiscount}`;
+            document.getElementById('summaryTotalTax').innerText = `₹${totalTax}`;
+            document.getElementById('summaryGrandNet').innerText = `₹${rev}`;
+
+            renderScreenshotBarChart(dateRevenueMap);
+            renderScreenshotCategoryDonut(categoryRevenueMap, rev);
+            renderScreenshotTopItems(itemMap);
+            renderCustomerFootfallChart(dateCustomerMap);
+            renderExcelSalesTable(filteredRecordsCache);
+        }
+
+        function renderScreenshotBarChart(dateRevenueMap) {
+            const ctx = document.getElementById('screenshotBarChart')?.getContext('2d');
+            if(!ctx) return;
+            let labels = Object.keys(dateRevenueMap);
+            let data = Object.values(dateRevenueMap);
+
+            if(labels.length === 0) {
+                labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                data = [0, 0, 0, 0, 0, 0, 0];
+            }
+
+            if(screenshotBarChartInstance) screenshotBarChartInstance.destroy();
+
+            const maxVal = Math.max(...data);
+            const backgroundColors = data.map(val => val === maxVal && val > 0 ? '#9e1b2f' : '#e67382');
+
+            screenshotBarChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Revenue',
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderRadius: 6,
+                        barPercentage: 0.75
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                        y: { grid: { color: '#f0eded' }, ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function renderScreenshotCategoryDonut(catMap, totalRev) {
+            const ctx = document.getElementById('screenshotCategoryDonut')?.getContext('2d');
+            if(!ctx) return;
+
+            let labels = Object.keys(catMap);
+            let data = Object.values(catMap);
+
+            if(labels.length === 0 || data.every(v => v === 0)) {
+                labels = ['Mains', 'Starters', 'Beverages'];
+                data = [1, 0, 0];
+            }
+
+            if(screenshotDonutChartInstance) screenshotDonutChartInstance.destroy();
+
+            screenshotDonutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#9e1b2f', '#b58e3e', '#e5e2e1'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderCustomerFootfallChart(dateCustomerMap) {
+            const ctx = document.getElementById('customerFootfallChart')?.getContext('2d');
+            if(!ctx) return;
+
+            let labels = Object.keys(dateCustomerMap);
+            let data = Object.values(dateCustomerMap);
+
+            if(labels.length === 0) {
+                labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                data = [0, 0, 0, 0, 0, 0, 0];
+            }
+
+            if(customerFootfallChartInstance) customerFootfallChartInstance.destroy();
+
+            customerFootfallChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        borderColor: '#006c4f',
+                        backgroundColor: 'rgba(0, 108, 79, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 2.5,
+                        pointBackgroundColor: '#006c4f'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                        y: { grid: { color: '#f0eded' }, ticks: { font: { size: 9 }, stepSize: 5 } }
+                    }
+                }
+            });
+        }
+
+        function renderScreenshotTopItems(itemMap) {
+            const container = document.getElementById('screenshotTopItemsList');
+            container.innerHTML = "";
+
+            let keys = Object.keys(itemMap).sort((a,b) => itemMap[b].revenue - itemMap[a].revenue).slice(0, 4);
+
+            if(keys.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-gray-400 text-xs font-medium">কোনো বিক্রির ডেটা এখনো নেই।</div>`;
+                return;
+            }
+
+            keys.forEach(name => {
+                const i = itemMap[name];
+                const img = i.img || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120";
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-2 rounded-xl hover:bg-surface-container-low transition-colors">
+                        <div class="flex items-center gap-3">
+                            <img src="${img}" class="w-12 h-12 rounded-xl object-cover" alt="${name}">
+                            <div>
+                                <h4 class="font-display font-bold text-xs text-on-surface">${name}</h4>
+                                <span class="text-[10px] text-gray-500 font-medium">${i.cat} • ${i.qty} sold</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-display font-bold text-sm text-primary">₹${i.revenue}</span>
+                            <span class="block text-[10px] text-emerald-700 font-bold">+${Math.min(15, i.qty)}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderExcelSalesTable(records) {
+            const tbody = document.getElementById('detailedSalesTableBody');
+            tbody.innerHTML = "";
+            if(records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-on-surface-variant font-medium">No sales transactions found.</td></tr>`;
+                return;
+            }
+            records.forEach(r => {
+                const isCash = (r.payment_mode || r.paymentMethod || '').toLowerCase().includes('cash');
+                const dateFormatted = new Date(r.created_at || Date.now()).toLocaleString();
+                const itemSummary = r.items_summary || (r.items && Array.isArray(r.items) ? r.items.map(i => `${i.qty}x ${i.item}`).join(', ') : (r.item || 'Dish'));
+                const invId = r.invoice_no || r.billId || r.key;
+                const finalAmt = parseFloat(r.grand_total || r.price || 0);
+                const discount = parseFloat(r.discount || 0);
+                const tax = parseFloat(r.totalTax || (parseFloat(r.cgst||0) + parseFloat(r.sgst||0)) || 0);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-mono font-bold text-primary">${invId}</td>
+                    <td class="text-on-surface-variant font-medium">${dateFormatted}</td>
+                    <td class="font-bold text-on-surface">Table ${r.table_no || r.table || '1'}</td>
+                    <td class="font-bold text-on-surface">${r.customer_name || r.customerName || 'Guest'}</td>
+                    <td class="text-on-surface-variant">${r.customer_phone || r.customerPhone || 'N/A'}</td>
+                    <td class="font-medium text-on-surface">${itemSummary}</td>
+                    <td class="text-center">
+                        <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold ${isCash ? 'bg-amber-100 text-amber-800' : 'bg-secondary-container/50 text-secondary'}">
+                            ${r.payment_mode || (isCash ? 'Cash' : 'UPI')}
+                        </span>
+                    </td>
+                    <td class="text-right text-secondary font-bold">${discount > 0 ? `-₹${discount}` : '₹0'}</td>
+                    <td class="text-right text-on-surface-variant">₹${tax}</td>
+                    <td class="text-right font-display font-bold text-primary">₹${finalAmt}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterExcelTable() {
+            const q = document.getElementById('excelSearchInput').value.toLowerCase();
+            const filtered = filteredRecordsCache.filter(r => {
+                const itemSummary = r.items_summary || (r.items && Array.isArray(r.items) ? r.items.map(i => i.item).join(' ') : (r.item || ''));
+                return (r.customer_name || r.customerName || '').toLowerCase().includes(q) ||
+                       (r.customer_phone || r.customerPhone || '').toLowerCase().includes(q) ||
+                       (r.invoice_no || r.billId || '').toLowerCase().includes(q) ||
+                       `table ${r.table_no || r.table}`.toLowerCase().includes(q) ||
+                       itemSummary.toLowerCase().includes(q) ||
+                       (r.payment_mode || r.paymentMethod || '').toLowerCase().includes(q);
+            });
+            renderExcelSalesTable(filtered);
+        }
+
+        function sendDailyReportToWhatsApp() {
+            const todayStr = new Date().toLocaleDateString('en-IN');
+            let totalSales = 0, billCount = 0, upiTotal = 0, cashTotal = 0;
+
+            for(let k in currentSalesData) {
+                const r = currentSalesData[k];
+                const recDate = new Date(r.created_at || Date.now()).toLocaleDateString('en-IN');
+                if(recDate === todayStr) {
+                    const amt = parseFloat(r.grand_total || r.price || 0);
+                    totalSales += amt;
+                    billCount++;
+                    if((r.payment_mode || r.paymentMethod || '').toLowerCase().includes('cash')) cashTotal += amt;
+                    else upiTotal += amt;
+                }
+            }
+
+            const restName = globalBrand.name || "OrderTrack Restaurant";
+            const targetPhone = prompt("মালিকের হোয়াটসঅ্যাপ নম্বর লিখুন (১০ ডিজিট):") || (globalBrand.phone ? globalBrand.phone.replace(/[^0-9]/g, '') : "919876543210");
+
+            const message = `📊 *${restName.toUpperCase()} - DAILY CLOSING REPORT* 📊%0A` +
+                            `📅 *Date:* ${todayStr}%0A` +
+                            `------------------------------------%0A` +
+                            `💰 *Total Revenue:* ₹${totalSales}%0A` +
+                            `🧾 *Total Customers / Bills:* ${billCount}%0A` +
+                            `💳 *UPI / Bank Settlement:* ₹${upiTotal}%0A` +
+                            `💵 *Cash Drawer Total:* ₹${cashTotal}%0A` +
+                            `------------------------------------%0A` +
+                            `🚀 *Automated by OrderTrack OS*`;
+
+            window.open(`https://wa.me/${targetPhone}?text=${message}`, '_blank');
+        }
+
+        function handleAdminLogout() {
+            if(confirm("Are you sure you want to logout from Admin panel?")) {
+                sessionStorage.clear();
+                window.location.reload();
+            }
+        }
+
+        function exportSalesToExcel() {
+            if(filteredRecordsCache.length === 0) return alert("No sales records to export!");
+            let csv = "Invoice_ID,Date_Time,Table,Customer_Name,Customer_Phone,Items_Ordered,Payment_Method,Discount,Tax,Grand_Total\n";
+            filteredRecordsCache.forEach(r => {
+                const itm = r.items_summary || (r.items && Array.isArray(r.items) ? r.items.map(x=>`${x.qty}x ${x.item}`).join('; ') : (r.item || ''));
+                const inv = r.invoice_no || r.billId || r.key;
+                const d = new Date(r.created_at || Date.now()).toLocaleString();
+                csv += `"${inv}","${d}","Table ${r.table_no || r.table || ''}","${r.customer_name || r.customerName || 'N/A'}","${r.customer_phone || r.customerPhone || 'N/A'}","${itm}","${r.payment_mode || r.paymentMethod || 'Cash'}",${r.discount || 0},${(parseFloat(r.cgst||0)+parseFloat(r.sgst||0)) || r.totalTax || 0},${r.grand_total || r.price || 0}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Sales_Ledger_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        }
+    </script>
+    <script type="module">
+    import { api } from '../api.js';
+
+    const REST_ID = 'REST_তোমার_আসল_আইডি_এখানে_দাও';
+
+    async function loadAdminDashboard() {
+        try {
+            // ১. অ্যাডমিন স্ট্যাটস ও মেনু লোড করা
+            const statsData = await api.getAdminStats(REST_ID);
+            const menuData = await api.getAdminMenu(REST_ID);
+            
+            console.log("Admin Stats:", statsData);
+            console.log("Admin Menu:", menuData);
+
+            const container = document.getElementById('admin-menu-container');
+            if (container && menuData.success) {
+                container.innerHTML = '';
+                menuData.menu.forEach(item => {
+                    container.innerHTML += `
+                        <div class="admin-item-card" style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4>${item.name} - ₹${item.price} (${item.category})</h4>
+                                <p>Status: ${item.is_available ? 'Available' : 'Unavailable'}</p>
+                            </div>
+                            <button onclick="removeItem('${item.id}')" style="background: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Delete</button>
+                        </div>
+                    `;
+                });
+            }
+        } catch (err) {
+            console.error("Failed to load admin data:", err.message);
+        }
+    }
+
+    // ২. নতুন মেনু আইটেম যোগ করার ফাংশন
+    window.addNewMenuItem = async function(event) {
+        event.preventDefault();
+        const itemData = {
+            restaurantId: REST_ID,
+            name: document.getElementById('itemName').value,
+            category: document.getElementById('itemCategory').value,
+            price: parseFloat(document.getElementById('itemPrice').value),
+            isAvailable: true
+        };
+
+        try {
+            await api.addMenuItem(itemData);
+            alert("Menu item added successfully!");
+            loadAdminDashboard();
+        } catch (err) {
+            alert("Failed to add item: " + err.message);
+        }
+    }
+
+    // ৩. মেনু আইটেম ডিলিট করার ফাংশন
+    window.removeItem = async function(itemId) {
+        if (!confirm("Are you sure you want to delete this item?")) return;
+        try {
+            await api.deleteMenuItem(itemId);
+            alert("Item deleted successfully!");
+            loadAdminDashboard();
+        } catch (err) {
+            alert("Failed to delete item: " + err.message);
+        }
+    }
+
+    loadAdminDashboard();
+</script>
+</body>
+</html>

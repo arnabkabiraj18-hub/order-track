@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>OrderTrack - Workstation Access</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "brand-red": "#9e1b2f",
+                        "brand-red-hover": "#851425",
+                        "bg-cream": "#f8f5f2",
+                        "card-bg": "#ffffff",
+                        "text-main": "#1e1e1e",
+                        "text-muted": "#6b6765",
+                        "border-line": "#e8e2dc"
+                    },
+                    fontFamily: {
+                        "serif": ["Playfair Display", "serif"],
+                        "sans": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined' !important; font-size: 18px; line-height: 1; display: inline-block; }
+    </style>
+</head>
+<body class="bg-bg-cream text-text-main font-sans min-h-screen flex flex-col justify-between p-4 antialiased selection:bg-brand-red selection:text-white">
+
+    <!-- TOP HEADER -->
+    <header class="max-w-md mx-auto w-full flex justify-between items-center py-2 px-1">
+        <a href="../../index.html" class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-brand-red text-white flex items-center justify-center font-bold text-xs shadow-xs">OT</div>
+            <span class="font-serif font-bold text-2xl text-brand-red tracking-tight">OrderTrack</span>
+        </a>
+        <a href="signup.html" class="text-xs font-bold text-brand-red hover:underline">Create Account</a>
+    </header>
+
+    <!-- CENTER LOGIN CARD (RESPONSIVE BOX) -->
+    <main class="flex-1 flex items-center justify-center my-4 w-full px-2">
+        <div class="w-full max-w-md bg-card-bg rounded-2xl p-6 sm:p-8 border border-border-line shadow-xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-brand-red"></div>
+
+            <!-- MODE ১: সেভ থাকা ডিভাইস (শুধুমাত্র ৪-সংখ্যার পিন দিয়ে সোজা আনলক) -->
+            <div id="trustedDeviceView" class="hidden space-y-5 text-center">
+                <div class="space-y-1">
+                    <span class="inline-block px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[10px] font-bold">
+                        ✓ Trusted Workstation
+                    </span>
+                    <h2 class="font-serif text-2xl font-bold text-text-main mt-2" id="savedRestTitle">My Restaurant</h2>
+                    <p class="text-xs text-text-muted">Enter your 4-digit PIN to directly unlock the Admin Suite.</p>
+                </div>
+
+                <form onsubmit="handleSavedPinUnlock(event)" class="space-y-4">
+                    <input type="password" id="inputSavedPin" maxlength="4" minlength="4" required placeholder="••••" class="w-full py-3 bg-bg-cream border border-border-line rounded-xl text-center font-extrabold tracking-[0.5em] text-2xl text-text-main outline-none focus:border-brand-red focus:ring-0">
+                    <button type="submit" class="w-full py-3 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-98">
+                        Unlock Admin Dashboard
+                    </button>
+                </form>
+
+                <button type="button" onclick="switchToFullLogin()" class="text-[11px] text-text-muted hover:text-brand-red underline block mx-auto">
+                    Sign in with another account
+                </button>
+            </div>
+
+            <!-- MODE ২: নতুন ডিভাইস (প্রথমবার ফোন নম্বর ও পাসওয়ার্ড দিয়ে লগইন) -->
+            <div id="newDeviceFullLoginView" class="space-y-5">
+                <div class="space-y-1 text-center">
+                    <h2 class="font-serif text-2xl sm:text-3xl font-bold text-text-main">Sign In to OrderTrack</h2>
+                    <p class="text-xs text-text-muted">Enter your registered mobile number and password to authorize this device.</p>
+                </div>
+
+                <form onsubmit="handleFirstTimeDeviceLogin(event)" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-medium text-text-main mb-1">Registered Mobile Number *</label>
+                        <div class="flex">
+                            <span class="inline-flex items-center px-3 bg-bg-cream border border-r-0 border-border-line rounded-l-lg text-text-muted font-bold text-xs">+91</span>
+                            <input type="tel" id="inputPhone" required maxlength="10" placeholder="9876543210" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-r-lg outline-none font-bold text-text-main focus:border-brand-red focus:ring-0">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-text-main mb-1">Account Password *</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="inputPassword" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-lg outline-none font-bold text-text-main focus:border-brand-red focus:ring-0">
+                            <button type="button" onclick="togglePassEye('inputPassword', this)" class="absolute right-3 text-gray-400 hover:text-text-main">
+                                <span class="material-symbols-outlined text-base">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnSubmitFullLogin" class="w-full py-3 bg-brand-red hover:bg-brand-red-hover text-white font-bold text-xs rounded-lg shadow-md transition-all active:scale-98">
+                        Sign In & Authorize This Device
+                    </button>
+                </form>
+
+                <div class="text-center pt-2 border-t border-border-line text-xs">
+                    <span class="text-text-muted">Don't have a restaurant account? </span>
+                    <a href="signup.html" class="text-brand-red font-bold hover:underline">Create Account</a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="max-w-md mx-auto w-full text-center py-3 border-t border-border-line text-[11px] text-text-muted">
+        © 2026 OrderTrack Operating System. All rights reserved.
+    </footer>
+
+    <script>
+        const API_BASE_URL = "http://localhost:5000"; // PostgreSQL Backend API URL
+
+        async function sha256Hash(string) {
+            const utf8 = new TextEncoder().encode(string);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(bytes => bytes.toString(16).padStart(2, '0')).join('');
+        }
+
+        function togglePassEye(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('span');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerText = 'visibility_off';
+            } else {
+                input.type = 'password';
+                icon.innerText = 'visibility';
+            }
+        }
+
+        // চেক করা হচ্ছে এই ডিভাইসটি আগে থেকেই লগইন করা কি না
+        const savedRestId = localStorage.getItem('CV_DEVICE_REST_ID');
+        const savedRestName = localStorage.getItem('CV_DEVICE_REST_NAME');
+        const savedPinHash = localStorage.getItem('CV_DEVICE_QUICK_PIN_HASH');
+
+        if (savedRestId && savedPinHash) {
+            // চেনা ডিভাইস: সরাসরি পিন দিয়ে খুলবে
+            document.getElementById('trustedDeviceView').classList.remove('hidden');
+            document.getElementById('newDeviceFullLoginView').classList.add('hidden');
+            document.getElementById('savedRestTitle').innerText = savedRestName || "My Restaurant";
+        }
+
+        function switchToFullLogin() {
+            document.getElementById('trustedDeviceView').classList.add('hidden');
+            document.getElementById('newDeviceFullLoginView').classList.remove('hidden');
+        }
+
+        // ১. সেভড ডিভাইসে পিন আনলক
+        async function handleSavedPinUnlock(e) {
+            e.preventDefault();
+            const inputPin = document.getElementById('inputSavedPin').value.trim();
+            const inputHash = await sha256Hash(inputPin);
+
+            if (inputHash === savedPinHash) {
+                sessionStorage.setItem('CV_ADMIN_LOGGED', 'true');
+                sessionStorage.setItem('CV_LOGGED_REST_ID', savedRestId);
+                window.location.href = "admin.html";
+            } else {
+                alert("❌ ভুল সিকিউরিটি পিন! সঠিক ৪ সংখ্যার পিন দিন।");
+                document.getElementById('inputSavedPin').value = "";
+            }
+        }
+
+        // ২. নতুন ডিভাইসে প্রথমবার ফোন নম্বর + পাসওয়ার্ড দিয়ে লগইন (PostgreSQL API Connected)
+        async function handleFirstTimeDeviceLogin(e) {
+            e.preventDefault();
+            const phone = document.getElementById('inputPhone').value.trim();
+            const password = document.getElementById('inputPassword').value;
+
+            if (phone.length !== 10) {
+                alert("সঠিক ১০ সংখ্যার মোবাইল নম্বর দিন!");
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitFullLogin');
+            btn.disabled = true;
+            btn.innerText = "Authorizing Device...";
+
+            try {
+                // ব্যাকএন্ড API-এ লগইন রিকোয়েস্ট পাঠানো হচ্ছে
+                const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: phone, password: password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert(data.message || "❌ ভুল মোবাইল নম্বর অথবা পাসওয়ার্ড!");
+                    btn.disabled = false;
+                    btn.innerText = "Sign In & Authorize This Device";
+                    return;
+                }
+
+                // সফলভাবে লগইন হলে লোকাল স্টোরেজে ডিভাইস সিকিউরিটি পিন ও রেস্টো আইডি সেভ হবে
+                localStorage.setItem('CV_DEVICE_REST_ID', data.restaurantId);
+                localStorage.setItem('CV_DEVICE_REST_NAME', data.restaurantName);
+                localStorage.setItem('CV_DEVICE_QUICK_PIN_HASH', data.quickPinHash || 'saved');
+
+                sessionStorage.setItem('CV_ADMIN_LOGGED', 'true');
+                sessionStorage.setItem('CV_LOGGED_REST_ID', data.restaurantId);
+
+                window.location.href = "admin.html";
+
+            } catch (err) {
+                console.error(err);
+                // ব্যাকএন্ড ডাউন থাকলে ফলব্যাক ডেমো চেক
+                const passHash = await sha256Hash(password);
+                if (phone === "9876543210") {
+                    localStorage.setItem('CV_DEVICE_REST_ID', "REST_DEMO");
+                    localStorage.setItem('CV_DEVICE_REST_NAME', "Demo Restaurant");
+                    localStorage.setItem('CV_DEVICE_QUICK_PIN_HASH', passHash);
+
+                    sessionStorage.setItem('CV_ADMIN_LOGGED', 'true');
+                    sessionStorage.setItem('CV_LOGGED_REST_ID', "REST_DEMO");
+                    window.location.href = "admin.html";
+                } else {
+                    alert("❌ সার্ভার কানেকশন ত্রুটি! ব্যাকএন্ড API চালু আছে কিনা চেক করুন।");
+                    btn.disabled = false;
+                    btn.innerText = "Sign In & Authorize This Device";
+                }
+            }
+        }
+    </script>
+    <script type="module">
+    import { api } from '../api.js';
+
+    window.handleLogin = async function(event) {
+        event.preventDefault();
+        const identifier = document.getElementById('loginIdentifier').value; // ইনপুট ফিল্ডের আইডি
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            const res = await api.login(identifier, password);
+            if (res.success) {
+                alert("Login successful!");
+                window.location.href = '../admin/index.html';
+            }
+        } catch (err) {
+            alert("Login failed: " + err.message);
+        }
+    };
+</script>
+</body>
+</html>

@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>Waiter Desk - AI Smart Operations</title>
+   
+    <!-- PWA Web App Manifest & Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#80121d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OrderTrack Waiter">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#80121d",
+                        "primary-container": "#b7122a",
+                        "secondary": "#006c4f",
+                        "surface": "#f5f3f0",
+                        "card": "#ffffff",
+                        "border-ui": "#dcd8d3",
+                        "error": "#ba1a1a"
+                    },
+                    fontFamily: {
+                        "serif": ["Playfair Display", "serif"],
+                        "sans": ["Inter", "sans-serif"],
+                        "display": ["Montserrat", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined' !important; font-size: 20px; line-height: 1; display: inline-block; vertical-align: middle; }
+        .icon-fill { font-variation-settings: 'FILL' 1 !important; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+
+    <!-- Backend Socket.io Client Engine -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="bg-surface text-[#1e1e1e] font-sans min-h-screen flex flex-col antialiased pb-24 select-none">
+
+    <!-- 0. SECURE 6-DIGIT PIN AUTHENTICATION SCREEN -->
+    <div id="waiterPinAuthScreen" class="fixed inset-0 z-50 bg-surface flex flex-col justify-center items-center p-4">
+        <div class="bg-card rounded-3xl p-6 max-w-sm w-full border border-border-ui shadow-2xl text-center space-y-5">
+            <div class="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                <span class="material-symbols-outlined text-3xl">lock</span>
+            </div>
+            <div>
+                <h2 class="font-serif font-bold text-xl text-primary">Waiter Terminal Login</h2>
+                <p class="text-xs text-gray-500 mt-1">অ্যাডমিন প্যানেল থেকে সেট করা ৬-ডিজিট পিন (6-Digit PIN) দিন:</p>
+            </div>
+            <div class="space-y-3">
+                <input type="password" id="inputWaiterPin" maxlength="6" placeholder="------" class="w-full text-center px-4 py-3 bg-surface border border-border-ui rounded-xl text-xl font-mono font-bold tracking-widest outline-none focus:border-primary">
+                <button type="button" onclick="verifyWaiterPin()" class="w-full py-3.5 bg-primary text-white rounded-xl font-bold text-xs shadow-md active:scale-95">
+                    Unlock Terminal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP HEADER -->
+    <header class="bg-surface border-b border-border-ui sticky top-0 z-30 px-4 h-16 flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="toggleDrawer()" class="p-2 text-on-surface hover:bg-black/5 rounded-xl active:scale-95">
+                <span class="material-symbols-outlined text-2xl">menu</span>
+            </button>
+            <h1 class="font-serif font-bold text-2xl text-primary tracking-tight">Waiter Desk</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <!-- LANGUAGE SELECTOR -->
+            <select id="langSelector" onchange="changeLanguage(this.value)" class="bg-surface border border-border-ui text-xs font-bold rounded-lg px-2 py-1 outline-none">
+                <option value="bn">বাংলা</option>
+                <option value="en">English</option>
+                <option value="hi">हिंदी</option>
+            </select>
+
+            <button type="button" onclick="openTableSplitManagerModal()" class="px-2.5 py-1 bg-primary text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs active:scale-95">
+                <span class="material-symbols-outlined text-sm">call_split</span> Split Table
+            </button>
+            <span id="slotBadge" class="text-[10px] font-bold bg-secondary/10 text-secondary px-2.5 py-1 rounded-md border border-secondary/20">Slot 1/15</span>
+        </div>
+    </header>
+
+    <!-- 1. TABLE DETAILS & RUNNING ORDER ACTION DIALOG -->
+    <div id="tableActionModal" class="fixed inset-0 bg-black/65 z-50 hidden justify-center items-end sm:items-center p-3 sm:p-4 backdrop-blur-xs">
+        <div class="bg-card rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full border border-border-ui space-y-4 max-h-[92vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center border-b pb-2.5">
+                <div>
+                    <h3 id="modalTableTitle" class="font-display font-extrabold text-lg text-primary">Table Details</h3>
+                    <p id="modalTableSubTitle" class="text-[11px] text-gray-500">চলমান খাবারের হিসাব, ক্যানসেল ও পেমেন্ট</p>
+                </div>
+                <button type="button" onclick="closeTableActionModal()"><span class="material-symbols-outlined">close</span></button>
+            </div>
+
+            <!-- LIVE FOOD ITEMS LIST -->
+            <div id="tableModalRunningItemsList" class="space-y-2 overflow-y-auto flex-1 text-xs pr-1 divide-y divide-gray-100 max-h-56"></div>
+
+            <div class="pt-2 border-t flex justify-between items-center text-xs font-bold">
+                <span>Total Bill Amount:</span>
+                <span id="modalTableRunningTotal" class="text-lg text-primary font-display font-extrabold">₹0</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 pt-1">
+                <button type="button" onclick="actionAddMoreFoodToTable()" class="py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 active:scale-95">
+                    <span class="material-symbols-outlined text-base">add_circle</span> + Add Food
+                </button>
+                <button type="button" onclick="actionShowTableUpiQr()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 active:scale-95 shadow-xs">
+                    <span class="material-symbols-outlined text-base">qr_code_scanner</span> Show UPI QR
+                </button>
+                <button type="button" onclick="actionWaiterForceSettle()" class="py-2.5 bg-red-50 text-error hover:bg-red-100 border border-error/20 rounded-xl font-bold text-[11px] flex flex-col items-center justify-center gap-1 active:scale-95">
+                    <span class="material-symbols-outlined text-base">check_circle</span> Clear Table
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. TABLE SIDE LIVE UPI QR MODAL WITH PAYMENT SUCCESS ANIMATION -->
+    <div id="waiterTableQrModal" class="fixed inset-0 bg-black/75 z-50 hidden justify-center items-center p-4 backdrop-blur-md">
+        <div id="waiterQrCard" class="bg-card rounded-3xl p-6 max-w-sm w-full border border-border-ui shadow-2xl text-center space-y-4">
+            <div id="qrNormalView" class="space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <span id="qrModalTableBadge" class="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full uppercase">Table 1</span>
+                    <button type="button" onclick="closeWaiterTableQrModal()"><span class="material-symbols-outlined text-sm">close</span></button>
+                </div>
+               
+                <div class="space-y-1">
+                    <span class="text-[11px] font-bold text-secondary bg-secondary/10 px-3 py-1 rounded-full">Scan & Pay at Table</span>
+                    <h3 id="waiterQrAmountDisplay" class="font-display font-extrabold text-3xl text-primary mt-2">₹0</h3>
+                </div>
+
+                <div class="p-4 bg-white rounded-2xl border-2 border-primary/20 shadow-inner flex justify-center items-center">
+                    <div id="waiterTableQrBox" class="w-[180px] h-[180px]"></div>
+                </div>
+
+                <p class="text-[10px] text-gray-400 font-medium">GPay • PhonePe • Paytm • Any UPI</p>
+
+                <div class="space-y-2 pt-1">
+                    <button type="button" onclick="confirmPaymentReceivedByWaiter()" class="w-full py-3 bg-secondary hover:bg-secondary/90 text-white rounded-2xl font-bold text-xs shadow-md active:scale-95 flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-base">verified</span> Verify & Complete Payment
+                    </button>
+                    <button type="button" onclick="closeWaiterTableQrModal()" class="w-full py-2 bg-gray-100 text-gray-600 rounded-xl font-bold text-xs">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+
+            <div id="qrSuccessView" class="hidden py-6 space-y-4 text-center animate-in zoom-in-95 duration-300">
+                <div class="w-20 h-20 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <span class="material-symbols-outlined text-5xl">check_circle</span>
+                </div>
+                <div class="space-y-1">
+                    <h2 class="font-display font-extrabold text-2xl text-emerald-900">Payment Successful!</h2>
+                    <p class="text-xs text-gray-500 font-semibold">পেমেন্ট সফলভাবে সম্পন্ন হয়েছে।</p>
+                    <p id="successAmountText" class="font-bold text-lg text-emerald-700 mt-2">₹0.00</p>
+                </div>
+                <button type="button" onclick="closeWaiterTableQrModal()" class="w-full py-3 bg-emerald-700 text-white rounded-2xl font-bold text-xs shadow-md">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ITEM RETURN & CANCEL MODAL -->
+    <div id="returnItemModal" class="fixed inset-0 bg-black/70 z-50 hidden justify-center items-center p-4 backdrop-blur-xs">
+        <div class="bg-card rounded-3xl p-5 max-w-sm w-full border border-border-ui space-y-3.5 shadow-2xl text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div class="flex items-center gap-1.5 text-error">
+                    <span class="material-symbols-outlined">assignment_return</span>
+                    <h3 class="font-bold text-sm text-gray-900">Return / Cancel Item</h3>
+                </div>
+                <button type="button" onclick="closeReturnItemModal()"><span class="material-symbols-outlined">close</span></button>
+            </div>
+
+            <div>
+                <p class="text-gray-600">খাবার: <strong id="returnDishNameText" class="text-primary font-bold">Dish</strong></p>
+                <p class="text-[11px] text-gray-400">টেবিলে খাবার ভুল যাওয়া বা ফেরত দেওয়ার কারণ নির্বাচন করুন:</p>
+            </div>
+
+            <div class="space-y-2">
+                <input type="hidden" id="returnOrderKey">
+                <select id="returnReasonDropdown" class="w-full px-3 py-2 border rounded-xl font-bold bg-white text-gray-800">
+                    <option value="Wrong Item Delivered">ভুল খাবার দেওয়া হয়েছিল (Wrong Item)</option>
+                    <option value="Customer Returned / Cold Food">কাস্টমার ফেরত দিয়েছেন / ঠান্ডা ছিল</option>
+                    <option value="Ordered By Mistake">ভুলবশত অর্ডার নেওয়া হয়েছিল</option>
+                    <option value="Quality Issue / Damaged">খাবারের মান ঠিক ছিল না</option>
+                </select>
+                <input type="text" id="returnNoteInput" placeholder="অতিরিক্ত বিবরণ (ঐচ্ছিক)..." class="w-full px-3 py-2 border rounded-xl outline-none">
+            </div>
+
+            <button type="button" onclick="executeItemReturnVoid()" class="w-full py-2.5 bg-error text-white font-bold rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-base">delete</span> বিল থেকে খাবার বাতিল করুন
+            </button>
+        </div>
+    </div>
+
+    <!-- 4. PICKUP NOTIFICATION CONFIRM MODAL -->
+    <div id="pickupConfirmModal" class="fixed inset-0 bg-black/70 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-card rounded-3xl p-6 max-w-sm w-full border border-border-ui shadow-2xl text-center space-y-4">
+            <div class="w-16 h-16 rounded-full bg-secondary/10 text-secondary flex items-center justify-center mx-auto">
+                <span class="material-symbols-outlined text-3xl">room_service</span>
+            </div>
+            <div>
+                <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Deliver Food To:</span>
+                <h2 id="confirmModalTableText" class="font-display font-extrabold text-3xl text-primary mt-1">Table 1</h2>
+                <p id="confirmModalItemsText" class="text-xs font-bold text-gray-700 mt-2 bg-surface p-2.5 rounded-xl border border-border-ui">2x Chicken Biryani</p>
+            </div>
+            <div class="space-y-2 pt-2">
+                <button type="button" onclick="finalizePickupDelivery()" class="w-full py-3.5 bg-secondary text-white rounded-2xl font-bold text-sm shadow-md active:scale-98 flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">check_circle</span> খাবার সার্ভড হয়েছে / Served
+                </button>
+                <button type="button" onclick="cancelPickupModal()" class="w-full py-2.5 bg-surface text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-200">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DRAWER OVERLAY -->
+    <div id="drawerOverlay" class="fixed inset-0 bg-black/50 z-50 hidden" onclick="toggleDrawer()"></div>
+    <aside id="sideDrawer" class="fixed top-0 left-0 bottom-0 w-72 bg-card z-50 shadow-2xl p-6 flex flex-col justify-between transform -translate-x-full transition-transform duration-300">
+        <div class="space-y-5">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-sm">Waiter Profile</h3>
+                <button type="button" onclick="toggleDrawer()"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="p-4 bg-surface rounded-2xl border border-border-ui space-y-2 text-xs">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shadow-sm">
+                        <span class="material-symbols-outlined">person</span>
+                    </div>
+                    <div>
+                        <h4 id="waiterSlotTitle" class="font-bold">Waiter Terminal</h4>
+                        <span class="text-secondary font-semibold text-[11px]">Active Session</span>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-border-ui text-gray-500 space-y-1">
+                    <p><strong>Device Token:</strong> <span id="deviceTokenDisplay" class="font-mono text-[10px]">...</span></p>
+                    <p><strong>Slots:</strong> <span class="text-primary font-bold">15 Concurrent</span></p>
+                </div>
+            </div>
+
+            <button type="button" onclick="installAppDirectly()" class="w-full py-2.5 px-3 rounded-xl bg-black text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm">
+                <span class="material-symbols-outlined text-base">install_mobile</span> Download App (PWA)
+            </button>
+        </div>
+        <button type="button" onclick="logoutDevice()" class="w-full py-3 rounded-xl bg-red-50 text-red-700 font-bold text-xs">
+            Release Slot & Logout
+        </button>
+    </aside>
+
+    <!-- 3 MAIN WORKSPACE VIEWS -->
+    <main class="max-w-md mx-auto w-full flex-1 px-4 py-4 space-y-5">
+       
+        <!-- VIEW 1: SERVICE CALLS & KITCHEN READY PICKUPS -->
+        <div id="viewCalls" class="space-y-5 block">
+            <section id="directServiceSection" class="space-y-2.5 hidden">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-serif font-bold text-lg text-blue-900 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-blue-700">water_drop</span> Direct Pantry Tasks
+                    </h2>
+                    <span id="pantryCountBadge" class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">0 Direct</span>
+                </div>
+                <div id="directServiceContainer" class="space-y-2"></div>
+            </section>
+
+            <section class="space-y-2.5">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-serif font-bold text-xl" data-i18n="service_calls">Service Calls</h2>
+                    <span id="urgentBadge" class="bg-red-100 text-primary text-[11px] font-bold px-2.5 py-0.5 rounded-full">0 Urgent</span>
+                </div>
+                <div id="serviceCallsContainer" class="space-y-2.5">
+                    <div class="bg-card rounded-2xl p-4 border border-border-ui text-center text-xs text-gray-500 py-6 font-medium">No service calls.</div>
+                </div>
+            </section>
+
+            <section class="space-y-2.5">
+                <h2 class="font-serif font-bold text-xl" data-i18n="orders_ready">Orders Ready (খাবার প্রস্তুত)</h2>
+                <div id="ordersReadyContainer" class="space-y-2.5">
+                    <div class="bg-card rounded-2xl p-4 border border-border-ui text-center text-xs text-gray-500 py-6 font-medium">No food ready for pickup.</div>
+                </div>
+
+                <div id="recentPickupsSection" class="hidden pt-1 space-y-1.5">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Recently Picked Up:</span>
+                    <div id="recentPickupsList" class="space-y-1.5"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- VIEW 2: DEDICATED TABLE STATUS -->
+        <div id="viewTables" class="space-y-4 hidden">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div>
+                    <h2 class="font-serif font-bold text-xl text-gray-900" data-i18n="floor_directory">Floor Table Directory</h2>
+                    <p class="text-[11px] text-gray-500">রানিং ও খালি টেবিলের লাইভ স্ট্যাটাস</p>
+                </div>
+                <span class="text-[10px] font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-lg">Tap to View/Pay</span>
+            </div>
+
+            <div class="flex gap-2 flex-wrap text-[10px] font-bold p-2.5 bg-white border border-border-ui rounded-2xl shadow-2xs justify-around">
+                <span class="flex items-center gap-1 text-emerald-700"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Free</span>
+                <span class="flex items-center gap-1 text-blue-700"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span> Running</span>
+                <span class="flex items-center gap-1 text-amber-700"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Bill Req</span>
+                <span class="flex items-center gap-1 text-red-600"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Dirty</span>
+            </div>
+
+            <div id="tableGrid" class="grid grid-cols-4 gap-2.5"></div>
+        </div>
+
+        <!-- VIEW 3: MENU & ORDER PUNCH VIEW -->
+        <div id="viewMenu" class="space-y-4 hidden">
+            <div class="bg-gradient-to-r from-primary to-primary-container p-3.5 rounded-2xl text-white flex items-center justify-between shadow-md">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-lg">mic</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-xs">AI Voice-to-Order</h4>
+                        <p class="text-[10px] text-white/80" id="voiceStatusText">Press to speak order...</p>
+                    </div>
+                </div>
+                <button type="button" id="btnVoiceMic" onclick="startVoiceRecognition()" class="px-3.5 py-1.5 bg-white text-primary rounded-xl text-xs font-bold shadow-xs active:scale-95 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">record_voice_over</span> Speak
+                </button>
+            </div>
+
+            <div class="bg-card p-3.5 rounded-2xl border border-border-ui space-y-2 shadow-xs">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold">Target Table:</label>
+                        <select id="selectOrderTable" onchange="checkTableRunningOrders()" class="px-3 py-1 bg-surface border rounded-xl text-xs font-bold text-primary"></select>
+                    </div>
+                    <button type="button" onclick="openCartModal()" class="px-3.5 py-1.5 bg-primary text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm active:scale-95">
+                        <span class="material-symbols-outlined text-sm">shopping_bag</span>
+                        <span id="cartCountBadge">0 Items</span>
+                    </button>
+                </div>
+                <div id="runningTableInfoBar" class="hidden text-[11px] p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 flex justify-between items-center font-medium">
+                    <span>⚡ রানিং অর্ডার: <strong id="runningTableItemCount">0</strong> আইটেম</span>
+                    <strong id="runningTableTotal">₹0</strong>
+                </div>
+            </div>
+
+            <input type="text" id="menuSearch" onkeyup="filterMenu()" placeholder="Search dishes (মেনু খুঁজুন)..." class="w-full px-4 py-2.5 bg-card border border-border-ui rounded-xl text-xs outline-none shadow-xs">
+            <div id="menuDishesList" class="space-y-2.5 max-h-[440px] overflow-y-auto pr-1"></div>
+        </div>
+    </main>
+
+    <!-- 3-TAB BOTTOM NAVIGATION -->
+    <nav class="fixed bottom-0 left-0 w-full z-40 bg-card border-t border-border-ui flex justify-around items-center px-4 py-2 max-w-md mx-auto right-0 shadow-lg">
+        <button type="button" onclick="switchNav('menu', this)" class="nav-tab flex flex-col items-center gap-1 text-gray-500 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-xl">menu_book</span>
+            <span class="text-[10px] font-bold" data-i18n="nav_menu">Menu</span>
+        </button>
+        <button type="button" onclick="switchNav('calls', this)" class="nav-tab active flex flex-col items-center gap-1 text-white bg-primary px-4 py-1 rounded-2xl shadow-md transition-all">
+            <span class="material-symbols-outlined text-xl icon-fill">notifications</span>
+            <span class="text-[10px] font-bold" data-i18n="nav_calls">Calls</span>
+        </button>
+        <button type="button" onclick="switchNav('tables', this)" class="nav-tab flex flex-col items-center gap-1 text-gray-500 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-xl">table_restaurant</span>
+            <span class="text-[10px] font-bold" data-i18n="nav_tables">Tables</span>
+        </button>
+    </nav>
+
+    <!-- CART MODAL -->
+    <div id="cartModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-xs">
+        <div class="bg-card rounded-3xl p-5 max-w-sm w-full border border-border-ui space-y-3.5 max-h-[88vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div>
+                    <h3 class="font-bold text-sm text-gray-900">Waiter Order Bucket</h3>
+                    <p class="text-[10px] text-gray-500" id="cartModalTableSub">Adding food to Table</p>
+                </div>
+                <button type="button" onclick="closeCartModal()"><span class="material-symbols-outlined">close</span></button>
+            </div>
+
+            <div id="cartItemsList" class="space-y-2 overflow-y-auto flex-1 text-xs pr-1"></div>
+
+            <div class="pt-2 border-t space-y-1.5">
+                <div class="flex justify-between font-bold text-sm">
+                    <span>New Order Total:</span>
+                    <span id="cartTotalDisplay" class="text-primary font-bold">₹0</span>
+                </div>
+            </div>
+
+            <button type="button" onclick="sendOrderToKitchen()" class="w-full py-3 bg-secondary text-white rounded-xl font-bold text-xs shadow-md active:scale-95 flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-base">send</span> Send to Kitchen / Pantry
+            </button>
+        </div>
+    </div>
+
+    <!-- TABLE SPLIT MANAGER MODAL -->
+    <div id="tableSplitManagerModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-xs">
+        <div class="bg-card rounded-3xl p-5 max-w-sm w-full border border-border-ui space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div>
+                    <h3 class="font-bold text-sm text-primary flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-base">call_split</span> Split / Share Table
+                    </h3>
+                    <p class="text-[10px] text-gray-500">একই টেবিলে দুটি আলাদা গ্রুপ বসলে ভাগ করুন (4A, 4B)</p>
+                </div>
+                <button type="button" onclick="closeTableSplitManagerModal()"><span class="material-symbols-outlined">close</span></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">Select Base Table to Split:</label>
+                    <select id="splitBaseTableSelect" class="w-full px-3 py-2 bg-surface border rounded-xl font-bold text-on-surface"></select>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Parts:</label>
+                    <select id="splitPartCountSelect" class="w-full px-3 py-2 bg-surface border rounded-xl font-bold text-primary">
+                        <option value="2">2 Sub-tables (4A, 4B)</option>
+                        <option value="3">3 Sub-tables (4A, 4B, 4C)</option>
+                    </select>
+                </div>
+                <div class="p-3 bg-surface rounded-xl border border-border-ui space-y-1">
+                    <span class="font-bold text-primary block">Active Split Tables:</span>
+                    <div id="activeSplitsSummaryList" class="space-y-1 text-[11px] text-gray-600">
+                        <span>No active split tables currently.</span>
+                    </div>
+                </div>
+                <div class="space-y-2 pt-1">
+                    <button type="button" onclick="executeTableSplit()" class="w-full py-3 bg-secondary text-white rounded-xl font-bold text-xs shadow-sm active:scale-95 flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">call_split</span> Split This Table
+                    </button>
+                    <button type="button" onclick="revertTableSplit()" class="w-full py-2.5 bg-surface text-gray-700 hover:text-error border border-border-ui rounded-xl font-bold text-xs flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-sm">merge</span> Merge Back
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- POSTGRESQL API & SOCKET.IO WAITER ENGINE -->
+    <script>
+        const API_BASE_URL = "http://localhost:5000";
+        const RESTAURANT_ID = sessionStorage.getItem('CV_DEVICE_REST_ID') || "REST_001";
+
+        let rawCalls = {}, rawOrders = {}, rawTables = {}, rawDishes = {};
+        let waiterCart = {};
+        let dirtyTablesMap = {};
+        let activeSplitTablesMap = {};
+        let pendingPickupAction = null;
+        let recentPickupHistory = [];
+        let myDeviceId = localStorage.getItem('CV_WAITER_DEV_ID') || null;
+        let currentModalActiveTable = null;
+        let staffBranding = { name: "OrderTrack", upi: "restaurant@okaxis" };
+
+        // LANGUAGE DICTIONARY
+        const i18nTexts = {
+            en: { service_calls: "Service Calls", orders_ready: "Orders Ready", floor_directory: "Floor Table Directory", nav_menu: "Menu", nav_calls: "Calls", nav_tables: "Tables" },
+            bn: { service_calls: "সার্ভিস কল", orders_ready: "খাবার প্রস্তুত (Orders Ready)", floor_directory: "ফ্লোর টেবিল ডিরেক্টরি", nav_menu: "মেনু", nav_calls: "কলস", nav_tables: "টেবিল" },
+            hi: { service_calls: "सेवा कॉल", orders_ready: "ऑर्डर तैयार", floor_directory: "टेबल निर्देशिका", nav_menu: "मेनू", nav_calls: "कॉल", nav_tables: "टेबल" }
+        };
+
+        function changeLanguage(lang) {
+            localStorage.setItem('WAITER_LANG', lang);
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18nTexts[lang] && i18nTexts[lang][key]) {
+                    el.innerText = i18nTexts[lang][key];
+                }
+            });
+        }
+
+        // 6-DIGIT PIN AUTHENTICATION CHECK
+        function verifyWaiterPin() {
+            const enteredPin = document.getElementById('inputWaiterPin').value.trim();
+            // Default waiter pin is '654321' or fetched from backend
+            fetch(`${API_BASE_URL}/api/pins`, { headers: { 'x-restaurant-id': RESTAURANT_ID } })
+                .then(res => res.json())
+                .then(data => {
+                    const validPin = data.waiter_pin || '654321';
+                    if (enteredPin === validPin) {
+                        document.getElementById('waiterPinAuthScreen').style.display = 'none';
+                        sessionStorage.setItem('WAITER_AUTHENTICATED', 'true');
+                    } else {
+                        alert("❌ ভুল পিন! সঠিক ৬-ডিজিট পিন দিন।");
+                    }
+                }).catch(() => {
+                    if (enteredPin === '654321') {
+                        document.getElementById('waiterPinAuthScreen').style.display = 'none';
+                        sessionStorage.setItem('WAITER_AUTHENTICATED', 'true');
+                    } else {
+                        alert("❌ ভুল পিন!");
+                    }
+                });
+        }
+
+        if (sessionStorage.getItem('WAITER_AUTHENTICATED') === 'true') {
+            document.getElementById('waiterPinAuthScreen').style.display = 'none';
+        }
+
+        const socket = io(API_BASE_URL);
+        socket.on('connect', () => {
+            socket.emit('join_restaurant', RESTAURANT_ID);
+            fetchAllWaiterData();
+        });
+
+        socket.on('new_order_placed', () => { fetchLiveOrders(); triggerHapticAndSound(); });
+        socket.on('order_status_updated', () => { fetchLiveOrders(); });
+        socket.on('order_voided', () => { fetchLiveOrders(); });
+        socket.on('menu_updated', () => { fetchMenuItems(); });
+        socket.on('branding_updated', () => { fetchBranding(); });
+
+        async function fetchAllWaiterData() {
+            await fetchBranding();
+            await fetchMenuItems();
+            await fetchLiveOrders();
+            await fetchTables();
+        }
+
+        function isDirectPantryItem(name, category) {
+            const str = (name + " " + (category || "")).toLowerCase();
+            return str.includes("water") || str.includes("coke") || str.includes("drink") ||
+                   str.includes("tissue") || str.includes("glass") || str.includes("ice") ||
+                   str.includes("beverage") || str.includes("cold drink") || str.includes("bisleri");
+        }
+
+        function triggerHapticAndSound() {
+            try {
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.25);
+            } catch (e) {}
+        }
+
+        function initDeviceGuard() {
+            const MAX_ALLOWED_DEVICES = 15;
+            if (!myDeviceId) {
+                myDeviceId = 'WTR_' + Math.random().toString(36).substr(2, 6);
+                localStorage.setItem('CV_WAITER_DEV_ID', myDeviceId);
+            }
+            document.getElementById('deviceTokenDisplay').innerText = myDeviceId;
+            document.getElementById('slotBadge').innerText = `Slot 1/${MAX_ALLOWED_DEVICES} Active`;
+            document.getElementById('waiterSlotTitle').innerText = `Waiter Terminal #1`;
+        }
+        initDeviceGuard();
+
+        async function fetchBranding() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/branding`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const b = await res.json();
+                    if (b) {
+                        staffBranding.name = b.name || "OrderTrack";
+                        staffBranding.upi = b.upi_id || "restaurant@okaxis";
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function fetchMenuItems() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/menu`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const list = await res.json();
+                    rawDishes = {};
+                    list.forEach(item => { rawDishes[item.id] = item; });
+                    renderDishes();
+                }
+            } catch(e) {}
+        }
+
+        async function fetchTables() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/tables`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const list = await res.json();
+                    rawTables = {};
+                    list.forEach(t => { rawTables[t.table_no] = t; });
+                    updateTables();
+                    renderTableGrid();
+                }
+            } catch(e) {}
+        }
+
+        async function fetchLiveOrders() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/orders?status=active`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const list = await res.json();
+                    rawOrders = {};
+                    list.forEach(o => { rawOrders[o.id] = o; });
+
+                    renderWaiterDesk();
+                    renderTableGrid();
+                    checkTableRunningOrders();
+                    if (currentModalActiveTable) renderTableActionModalItems(currentModalActiveTable);
+                }
+            } catch(e) {}
+        }
+
+        function toggleDrawer() {
+            document.getElementById('sideDrawer').classList.toggle('-translate-x-full');
+            document.getElementById('drawerOverlay').classList.toggle('hidden');
+        }
+
+        // 3-TAB SWITCHER
+        function switchNav(type, btn) {
+            document.getElementById('viewCalls').classList.add('hidden');
+            document.getElementById('viewMenu').classList.add('hidden');
+            document.getElementById('viewTables').classList.add('hidden');
+
+            document.querySelectorAll('.nav-tab').forEach(b => {
+                b.className = "nav-tab flex flex-col items-center gap-1 text-gray-500 active:scale-95 transition-all";
+                b.querySelector('span')?.classList.remove('icon-fill');
+            });
+
+            if (btn) {
+                btn.className = "nav-tab active flex flex-col items-center gap-1 text-white bg-primary px-4 py-1 rounded-2xl shadow-md transition-all";
+                btn.querySelector('span')?.classList.add('icon-fill');
+            }
+
+            if (type === 'calls') {
+                document.getElementById('viewCalls').classList.remove('hidden');
+            } else if (type === 'tables') {
+                document.getElementById('viewTables').classList.remove('hidden');
+                renderTableGrid();
+            } else {
+                document.getElementById('viewMenu').classList.remove('hidden');
+                checkTableRunningOrders();
+            }
+        }
+
+        // 1. RENDER CALLS, PANTRY, & READY PICKUPS
+        function renderWaiterDesk() {
+            const pantryBox = document.getElementById('directServiceContainer');
+            const pantrySec = document.getElementById('directServiceSection');
+            const callsBox = document.getElementById('serviceCallsContainer');
+            const readyBox = document.getElementById('ordersReadyContainer');
+           
+            pantryBox.innerHTML = "";
+            callsBox.innerHTML = "";
+            readyBox.innerHTML = "";
+
+            let urgent = 0;
+
+            const pantryOrders = [];
+            for (let k in rawOrders) {
+                const o = rawOrders[k];
+                if (o.status !== 'Served' && o.is_pantry === true) {
+                    pantryOrders.push({ key: o.id, ...o });
+                }
+            }
+
+            if (pantryOrders.length > 0) {
+                pantrySec.classList.remove('hidden');
+                document.getElementById('pantryCountBadge').innerText = `${pantryOrders.length} Direct`;
+                urgent += pantryOrders.length;
+
+                pantryOrders.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = "bg-blue-50/80 rounded-2xl p-3.5 border border-blue-200 flex items-center justify-between gap-3 shadow-xs";
+                    div.innerHTML = `
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                <span class="material-symbols-outlined text-sm">local_drink</span>
+                            </span>
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-1.5 py-0.2 bg-blue-200 text-blue-900 rounded font-extrabold text-[10px]">T-${p.table_no}</span>
+                                    <h4 class="font-bold text-xs text-blue-950">${p.qty}x ${p.item_name}</h4>
+                                </div>
+                                <p class="text-[10px] text-blue-700 font-medium">Direct Delivery (প্যান্ট্রি থেকে দিন)</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="serveDirectPantryItem('${p.key}')" class="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95">
+                            Delivered
+                        </button>
+                    `;
+                    pantryBox.appendChild(div);
+                });
+            } else {
+                pantrySec.classList.add('hidden');
+            }
+
+            // Ready items from kitchen
+            const readyByTable = {};
+            for (let k in rawOrders) {
+                const o = rawOrders[k];
+                const t = String(o.table_no || "1");
+                if (o.status === 'Ready' && !t.startsWith('PARCEL-') && !o.is_pantry) {
+                    if (!readyByTable[t]) readyByTable[t] = [];
+                    readyByTable[t].push({ key: o.id, ...o });
+                }
+            }
+
+            const readyTables = Object.keys(readyByTable);
+            if (readyTables.length === 0) {
+                readyBox.innerHTML = `<div class="bg-card rounded-2xl p-4 border border-border-ui text-center text-xs text-gray-500 py-6 font-medium">No food ready for pickup.</div>`;
+            } else {
+                urgent += readyTables.length;
+                readyTables.forEach(t => {
+                    const readyItems = readyByTable[t];
+                    const itemNames = readyItems.map(i => `${i.qty}x ${i.item_name}`).join(', ');
+
+                    const div = document.createElement('div');
+                    div.className = "bg-card rounded-2xl p-4 border border-border-ui shadow-xs flex items-center justify-between gap-3";
+                    div.innerHTML = `
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 border flex items-center justify-center flex-shrink-0 font-bold">
+                                <span class="material-symbols-outlined">restaurant</span>
+                            </div>
+                            <div class="overflow-hidden">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-2 py-0.5 rounded-md bg-primary text-white font-extrabold text-[10px]">T-${t}</span>
+                                    <h4 class="font-bold text-xs text-on-surface truncate">${readyItems[0].item_name}</h4>
+                                </div>
+                                <p class="text-xs text-gray-500 truncate mt-0.5">Ready: <strong>${itemNames}</strong></p>
+                            </div>
+                        </div>
+                        <button onclick="triggerPickupConfirmation('${t}', '${itemNames.replace(/'/g, "\\'")}')" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-xs shadow-xs active:scale-95 flex-shrink-0">
+                            Pickup
+                        </button>
+                    `;
+                    readyBox.appendChild(div);
+                });
+            }
+
+            document.getElementById('urgentBadge').innerText = `${urgent} Urgent`;
+            renderRecentPickupsUI();
+        }
+
+        async function serveDirectPantryItem(orderId) {
+            try {
+                await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ status: 'Served' })
+                });
+                fetchLiveOrders();
+            } catch(e) {}
+        }
+
+        function dismissCall(k) { /* Service call removal handled via socket or state */ }
+
+        // 2. PICKUP DELIVERY CONFIRMATION
+        function triggerPickupConfirmation(tableNo, itemSummary) {
+            pendingPickupAction = { tableNo, itemSummary };
+            document.getElementById('confirmModalTableText').innerText = `Table ${tableNo}`;
+            document.getElementById('confirmModalItemsText').innerText = itemSummary;
+           
+            document.getElementById('pickupConfirmModal').classList.remove('hidden');
+            document.getElementById('pickupConfirmModal').classList.add('flex');
+            triggerHapticAndSound();
+        }
+
+        function cancelPickupModal() {
+            pendingPickupAction = null;
+            document.getElementById('pickupConfirmModal').classList.add('hidden');
+            document.getElementById('pickupConfirmModal').classList.remove('flex');
+        }
+
+        async function finalizePickupDelivery() {
+            if (!pendingPickupAction) return;
+            const { tableNo, itemSummary } = pendingPickupAction;
+
+            for (let k in rawOrders) {
+                if (String(rawOrders[k].table_no) === String(tableNo) && rawOrders[k].status === 'Ready') {
+                    try {
+                        await fetch(`${API_BASE_URL}/api/orders/${rawOrders[k].id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                            body: JSON.stringify({ status: 'Served' })
+                        });
+                    } catch(e) {}
+                }
+            }
+
+            recentPickupHistory.unshift({
+                table: tableNo,
+                items: itemSummary,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            if (recentPickupHistory.length > 5) recentPickupHistory.pop();
+
+            cancelPickupModal();
+            renderRecentPickupsUI();
+            fetchLiveOrders();
+        }
+
+        function renderRecentPickupsUI() {
+            const container = document.getElementById('recentPickupsList');
+            const section = document.getElementById('recentPickupsSection');
+            if (recentPickupHistory.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            container.innerHTML = "";
+            recentPickupHistory.forEach(r => {
+                const row = document.createElement('div');
+                row.className = "bg-surface p-2.5 rounded-xl border border-border-ui text-xs flex justify-between items-center shadow-2xs";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="px-2 py-0.5 bg-secondary text-white font-extrabold rounded-md text-[10px]">T-${r.table}</span>
+                        <span class="font-bold text-gray-800 truncate">${r.items}</span>
+                    </div>
+                    <span class="text-[10px] text-gray-400 font-medium flex-shrink-0">${r.time}</span>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // 3. TABLE GRID WITH COLOR-CODING
+        function renderTableGrid() {
+            const grid = document.getElementById('tableGrid');
+            if (!grid) return;
+            grid.innerHTML = "";
+
+            const baseKeys = Object.keys(rawTables).length > 0 ? Object.keys(rawTables) : ["1","2","3","4","5","6","7","8"];
+
+            let displayKeys = [];
+            baseKeys.forEach(t => {
+                if (activeSplitTablesMap[t] && Array.isArray(activeSplitTablesMap[t])) {
+                    displayKeys.push(...activeSplitTablesMap[t]);
+                } else {
+                    displayKeys.push(t);
+                }
+            });
+
+            displayKeys.forEach(t => {
+                const tableOrders = Object.values(rawOrders).filter(o => String(o.table_no) === String(t) && o.status !== 'Served');
+                const hasReady = tableOrders.some(o => o.status === 'Ready');
+                const isOccupied = tableOrders.length > 0;
+                const isDirty = dirtyTablesMap[t] === true;
+                const isSplitSubTable = /[A-Z]$/.test(t);
+
+                let bgCard = "bg-card";
+                let borderStyle = "border-border-ui";
+                let icon = "deck";
+                let text = "Free";
+                let textColor = "text-gray-500";
+                let pulseDot = false;
+
+                if (isDirty && !isOccupied) {
+                    bgCard = "bg-red-50/70"; borderStyle = "border-red-400 border-2"; icon = "cleaning_services"; text = "Dirty"; textColor = "text-red-700";
+                } else if (hasReady) {
+                    bgCard = "bg-emerald-50 border-2 border-emerald-500"; borderStyle = "border-emerald-500"; icon = "room_service"; text = "Ready"; textColor = "text-emerald-800"; pulseDot = true;
+                } else if (isOccupied) {
+                    bgCard = "bg-blue-50/60 border-2 border-blue-400"; borderStyle = "border-blue-400"; icon = "restaurant"; text = "Running"; textColor = "text-blue-900";
+                }
+
+                const d = document.createElement('div');
+                d.className = `${bgCard} rounded-2xl p-2.5 border ${borderStyle} relative flex flex-col items-center justify-between h-24 text-center cursor-pointer shadow-2xs transition-all active:scale-95`;
+                d.onclick = () => openTableActionModal(t, isOccupied, isDirty);
+
+                d.innerHTML = `
+                    ${pulseDot ? `<span class="w-2.5 h-2.5 rounded-full bg-primary absolute top-2 right-2 animate-ping"></span>` : ''}
+                    <div class="flex justify-between w-full text-[10px] font-bold ${textColor}">
+                        <span class="${isSplitSubTable ? 'text-primary font-extrabold' : ''}">T${t}</span>
+                        <span>${isDirty ? 'CLEAN' : ''}</span>
+                    </div>
+                    <span class="material-symbols-outlined text-xl ${textColor}">${icon}</span>
+                    <span class="text-[9px] font-bold ${textColor} truncate w-full">${isOccupied ? text : (isDirty ? 'Needs Cleaning' : 'Free')}</span>
+                `;
+                grid.appendChild(d);
+            });
+        }
+
+        // 4. TABLE ACTION MODAL
+        function openTableActionModal(tableNo, isOccupied, isDirty) {
+            if (isDirty && !isOccupied) {
+                if (confirm(`Table ${tableNo} কি পরিষ্কার করা হয়ে গেছে?`)) {
+                    database.ref('dirtyTables/' + tableNo).remove();
+                    renderTableGrid();
+                }
+                return;
+            }
+
+            currentModalActiveTable = tableNo;
+            document.getElementById('modalTableTitle').innerText = `Table ${tableNo}`;
+            renderTableActionModalItems(tableNo);
+
+            document.getElementById('tableActionModal').classList.remove('hidden');
+            document.getElementById('tableActionModal').classList.add('flex');
+        }
+
+        function closeTableActionModal() {
+            currentModalActiveTable = null;
+            document.getElementById('tableActionModal').classList.add('hidden');
+            document.getElementById('tableActionModal').classList.remove('flex');
+        }
+
+        function renderTableActionModalItems(tableNo) {
+            const list = document.getElementById('tableModalRunningItemsList');
+            list.innerHTML = "";
+            let runningTotal = 0;
+
+            const tableItems = Object.values(rawOrders).filter(o => String(o.table_no) === String(tableNo) && o.status !== 'Served');
+
+            if (tableItems.length === 0) {
+                list.innerHTML = `<p class="text-center py-6 text-gray-400 text-xs">এই টেবিলে কোনো খাবার নেই। "+ Add Food" চাপুন।</p>`;
+            } else {
+                tableItems.forEach(i => {
+                    runningTotal += parseFloat(i.price || 0);
+                    const isServed = i.status === 'Served';
+                    const isReady = i.status === 'Ready';
+
+                    const row = document.createElement('div');
+                    row.className = "py-2 flex justify-between items-center";
+                    row.innerHTML = `
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-gray-900">${i.qty}x ${i.item_name}</span>
+                                ${i.is_parcel ? `<span class="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-800 font-bold rounded">🛍️ Pack</span>` : ''}
+                                ${i.is_pantry ? `<span class="text-[9px] px-1 bg-blue-100 text-blue-800 font-bold rounded">Pantry</span>` : ''}
+                            </div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">
+                                Status: <strong class="${isServed ? 'text-blue-700' : (isReady ? 'text-secondary font-extrabold' : 'text-amber-600')}">${i.status || 'Pending'}</strong>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-xs">₹${i.price}</span>
+                            <button type="button" onclick="openItemReturnModal('${i.id}', '${i.item_name.replace(/'/g, "\\'")}')" class="px-2 py-1 bg-red-50 text-error hover:bg-error hover:text-white rounded-lg text-[10px] font-bold border border-error/20 transition-all flex items-center gap-0.5">
+                                <span class="material-symbols-outlined text-xs">close</span> Cancel
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(row);
+                });
+            }
+
+            document.getElementById('modalTableRunningTotal').innerText = `₹${runningTotal}`;
+        }
+
+        function actionAddMoreFoodToTable() {
+            if (!currentModalActiveTable) return;
+            document.getElementById('selectOrderTable').value = currentModalActiveTable;
+            checkTableRunningOrders();
+            closeTableActionModal();
+            switchNav('menu', document.querySelectorAll('.nav-tab')[0]);
+        }
+
+        function actionShowTableUpiQr() {
+            if (!currentModalActiveTable) return;
+            quickOpenTableQr(currentModalActiveTable);
+        }
+
+        function quickOpenTableQr(tableNo) {
+            let total = 0;
+            for (let k in rawOrders) {
+                if (String(rawOrders[k].table_no) === String(tableNo) && rawOrders[k].status !== 'Served') {
+                    total += parseFloat(rawOrders[k].price || 0);
+                }
+            }
+
+            if (total <= 0) {
+                alert(`Table ${tableNo}-এ কোনো সক্রিয় বিলিং অ্যামাউন্ট নেই!`);
+                return;
+            }
+
+            currentModalActiveTable = tableNo;
+            document.getElementById('qrModalTableBadge').innerText = `Table ${tableNo}`;
+            document.getElementById('waiterQrAmountDisplay').innerText = `₹${total}`;
+            document.getElementById('successAmountText').innerText = `₹${total}.00`;
+
+            const qrBox = document.getElementById('waiterTableQrBox');
+            qrBox.innerHTML = "";
+            const upiUrl = `upi://pay?pa=${staffBranding.upi}&pn=${encodeURIComponent(staffBranding.name)}&am=${total}&cu=INR`;
+            new QRCode(qrBox, { text: upiUrl, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff" });
+
+            document.getElementById('qrNormalView').classList.remove('hidden');
+            document.getElementById('qrSuccessView').classList.add('hidden');
+
+            document.getElementById('waiterTableQrModal').classList.remove('hidden');
+            document.getElementById('waiterTableQrModal').classList.add('flex');
+        }
+
+        function confirmPaymentReceivedByWaiter() {
+            const tableNo = currentModalActiveTable;
+            triggerHapticAndSound();
+
+            document.getElementById('qrNormalView').classList.add('hidden');
+            document.getElementById('qrSuccessView').classList.remove('hidden');
+        }
+
+        function closeWaiterTableQrModal() {
+            document.getElementById('waiterTableQrModal').classList.add('hidden');
+            document.getElementById('waiterTableQrModal').classList.remove('flex');
+        }
+
+        async function actionWaiterForceSettle() {
+            if (!currentModalActiveTable) return;
+            const tableNo = currentModalActiveTable;
+
+            const confirmCode = prompt(`কাস্টমার কি টাকা দিয়ে চলে গেছে এবং টেবিল খালি?\nটেবিল ফাঁকা করতে "YES" লিখুন:`);
+            if ((confirmCode || '').toUpperCase() === "YES") {
+                for (let k in rawOrders) {
+                    if (String(rawOrders[k].table_no) === String(tableNo)) {
+                        try {
+                            await fetch(`${API_BASE_URL}/api/orders/${rawOrders[k].id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                                body: JSON.stringify({ status: 'Served' })
+                            });
+                        } catch(e) {}
+                    }
+                }
+
+                closeTableActionModal();
+                alert(`✅ Table ${tableNo} রিসেট করা হয়েছে!`);
+                fetchLiveOrders();
+            }
+        }
+
+        function openItemReturnModal(orderId, itemName) {
+            document.getElementById('returnOrderKey').value = orderId;
+            document.getElementById('returnDishNameText').innerText = itemName;
+            document.getElementById('returnItemModal').classList.remove('hidden');
+            document.getElementById('returnItemModal').classList.add('flex');
+        }
+
+        function closeReturnItemModal() {
+            document.getElementById('returnItemModal').classList.add('hidden');
+            document.getElementById('returnItemModal').classList.remove('flex');
+        }
+
+        async function executeItemReturnVoid() {
+            const orderId = document.getElementById('returnOrderKey').value;
+            const itemName = document.getElementById('returnDishNameText').innerText;
+            const tableNo = currentModalActiveTable || "1";
+            const reason = document.getElementById('returnReasonDropdown').value;
+            const note = document.getElementById('returnNoteInput').value.trim();
+
+            if (!orderId) return;
+
+            try {
+                // Post void log
+                await fetch(`${API_BASE_URL}/api/orders/${orderId}/void`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ reason, additional_note: note, staff_device_id: myDeviceId })
+                });
+
+                alert(`⚠️ "${itemName}" সফলভাবে বাতিল করা হয়েছে।`);
+                closeReturnItemModal();
+                if (currentModalActiveTable) renderTableActionModalItems(currentModalActiveTable);
+                fetchLiveOrders();
+            } catch(e) { alert("Failed to cancel item."); }
+        }
+
+        function updateTables() {
+            const select = document.getElementById('selectOrderTable');
+            const splitBaseSelect = document.getElementById('splitBaseTableSelect');
+
+            select.innerHTML = "";
+            if (splitBaseSelect) splitBaseSelect.innerHTML = "";
+
+            const baseKeys = Object.keys(rawTables).length > 0 ? Object.keys(rawTables) : ["1","2","3","4","5","6","7","8"];
+
+            baseKeys.forEach(k => {
+                if (splitBaseSelect) splitBaseSelect.innerHTML += `<option value="${k}">Table ${k}</option>`;
+                select.innerHTML += `<option value="${k}">Table ${k}</option>`;
+            });
+        }
+
+        function checkTableRunningOrders() {
+            const currentTable = document.getElementById('selectOrderTable').value;
+            const tableOrders = Object.values(rawOrders).filter(o => String(o.table_no) === String(currentTable) && o.status !== 'Served');
+            const infoBar = document.getElementById('runningTableInfoBar');
+
+            if (tableOrders.length > 0) {
+                let total = 0;
+                tableOrders.forEach(i => total += parseFloat(i.price || 0));
+                document.getElementById('runningTableItemCount').innerText = tableOrders.length;
+                document.getElementById('runningTableTotal').innerText = `₹${total}`;
+                infoBar.classList.remove('hidden');
+                document.getElementById('cartModalTableSub').innerText = `Adding to Table ${currentTable} (Running Bill)`;
+            } else {
+                infoBar.classList.add('hidden');
+                document.getElementById('cartModalTableSub').innerText = `New Order for Table ${currentTable}`;
+            }
+        }
+
+        function renderDishes() {
+            const list = document.getElementById('menuDishesList');
+            if (!list) return;
+            list.innerHTML = "";
+            for (let k in rawDishes) {
+                const d = rawDishes[k];
+                if (d.available !== false) {
+                    const isVeg = (d.diet_type || d.type) === 'veg';
+                    const isPantry = d.is_pantry === true || isDirectPantryItem(d.name, d.category);
+
+                    list.innerHTML += `
+                        <div class="bg-card p-3 rounded-2xl border border-border-ui flex items-center justify-between shadow-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-xs ${isVeg ? 'bg-secondary' : 'bg-primary'} inline-block"></span>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <h4 class="font-bold text-xs">${d.name}</h4>
+                                        ${isPantry ? `<span class="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[8px] font-bold rounded">Pantry</span>` : ''}
+                                    </div>
+                                    <span class="text-xs text-primary font-bold">₹${d.price}</span>
+                                </div>
+                            </div>
+                            <button type="button" onclick="addToCart('${d.name.replace(/'/g, "\\'")}', ${d.price}, '${d.category || ''}')" class="w-8 h-8 rounded-xl bg-primary text-white font-bold text-sm shadow-xs active:scale-95">+</button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function filterMenu() {
+            const q = document.getElementById('menuSearch').value.toLowerCase();
+            const list = document.getElementById('menuDishesList');
+            list.innerHTML = "";
+            for (let k in rawDishes) {
+                const d = rawDishes[k];
+                if (d.name.toLowerCase().includes(q) && d.available !== false) {
+                    const isVeg = (d.diet_type || d.type) === 'veg';
+                    const isPantry = d.is_pantry === true || isDirectPantryItem(d.name, d.category);
+
+                    list.innerHTML += `
+                        <div class="bg-card p-3 rounded-2xl border border-border-ui flex items-center justify-between shadow-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-xs ${isVeg ? 'bg-secondary' : 'bg-primary'} inline-block"></span>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <h4 class="font-bold text-xs">${d.name}</h4>
+                                        ${isPantry ? `<span class="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[8px] font-bold rounded">Pantry</span>` : ''}
+                                    </div>
+                                    <span class="text-xs text-primary font-bold">₹${d.price}</span>
+                                </div>
+                            </div>
+                            <button type="button" onclick="addToCart('${d.name.replace(/'/g, "\\'")}', ${d.price}, '${d.category || ''}')" class="w-8 h-8 rounded-xl bg-primary text-white font-bold text-sm shadow-xs active:scale-95">+</button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function addToCart(n, p, category = '') {
+            const isPantry = isDirectPantryItem(n, category);
+            if (!waiterCart[n]) {
+                waiterCart[n] = { price: p, qty: 1, isParcel: false, isPantryDirect: isPantry, category: category };
+            } else {
+                waiterCart[n].qty++;
+            }
+            updateCartCount();
+        }
+
+        function toggleCartItemParcel(dishName, isChecked) {
+            if (waiterCart[dishName]) {
+                waiterCart[dishName].isParcel = isChecked;
+            }
+        }
+
+        function updateCartCount() {
+            let tot = 0;
+            for (let k in waiterCart) tot += waiterCart[k].qty;
+            document.getElementById('cartCountBadge').innerText = `${tot} Items`;
+        }
+
+        function openCartModal() {
+            const list = document.getElementById('cartItemsList');
+            list.innerHTML = "";
+            let total = 0;
+
+            const cartKeys = Object.keys(waiterCart);
+            if (cartKeys.length === 0) {
+                list.innerHTML = "<p class='text-center py-6 text-gray-400'>কার্টে খাবার যোগ করুন।</p>";
+            } else {
+                cartKeys.forEach(k => {
+                    const item = waiterCart[k];
+                    total += item.price * item.qty;
+                    list.innerHTML += `
+                        <div class="p-2.5 rounded-xl border border-border-ui bg-surface space-y-1.5">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="font-bold">${item.qty}x ${k}</span>
+                                    ${item.isPantryDirect ? `<span class="ml-1 text-[8px] px-1 bg-blue-100 text-blue-800 font-bold rounded">Pantry Direct</span>` : ''}
+                                    <div class="text-[10px] text-gray-500">₹${item.price} each</div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button type="button" onclick="changeCartQty('${k.replace(/'/g, "\\'")}', -1)" class="w-6 h-6 rounded bg-white font-bold flex items-center justify-center">-</button>
+                                    <span class="font-bold px-1">${item.qty}</span>
+                                    <button type="button" onclick="changeCartQty('${k.replace(/'/g, "\\'")}', 1)" class="w-6 h-6 rounded bg-primary text-white font-bold flex items-center justify-center">+</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between pt-1 border-t border-border-ui/60 text-[11px]">
+                                <label class="flex items-center gap-1.5 cursor-pointer font-bold text-amber-800">
+                                    <input type="checkbox" onchange="toggleCartItemParcel('${k.replace(/'/g, "\\'")}', this.checked)" ${item.isParcel ? 'checked' : ''} class="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500">
+                                    <span>🛍️ Pack this item (বাড়ি নিয়ে যাবেন)</span>
+                                </label>
+                                <span class="font-bold text-gray-900">₹${item.price * item.qty}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('cartTotalDisplay').innerText = `₹${total}`;
+            document.getElementById('cartModal').classList.remove('hidden');
+            document.getElementById('cartModal').classList.add('flex');
+        }
+
+        function changeCartQty(name, delta) {
+            if (waiterCart[name]) {
+                waiterCart[name].qty += delta;
+                if (waiterCart[name].qty <= 0) delete waiterCart[name];
+                updateCartCount();
+                openCartModal();
+            }
+        }
+
+        function closeCartModal() {
+            document.getElementById('cartModal').classList.add('hidden');
+            document.getElementById('cartModal').classList.remove('flex');
+        }
+
+        async function sendOrderToKitchen() {
+            const t = document.getElementById('selectOrderTable').value;
+            const cartKeys = Object.keys(waiterCart);
+
+            if (cartKeys.length === 0) {
+                alert("কার্টে খাবার যোগ করুন!");
+                return;
+            }
+
+            for (let k of cartKeys) {
+                const item = waiterCart[k];
+                const isPantry = item.isPantryDirect || isDirectPantryItem(k, item.category);
+
+                const payload = {
+                    restaurant_id: RESTAURANT_ID,
+                    table_no: t,
+                    item_name: k,
+                    qty: item.qty,
+                    price: item.price * item.qty,
+                    is_pantry: isPantry,
+                    status: "Pending",
+                    notes: item.isParcel ? "Parcel Pack 🛍️" : ""
+                };
+
+                try {
+                    await fetch(`${API_BASE_URL}/api/orders`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                        body: JSON.stringify(payload)
+                    });
+                } catch(e) {}
+            }
+
+            alert(`✅ Table ${t}-এর জন্য অর্ডার সফলভাবে পাঞ্চ হয়েছে!`);
+            waiterCart = {};
+            updateCartCount();
+            closeCartModal();
+            fetchLiveOrders();
+            switchNav('calls', document.querySelectorAll('.nav-tab')[1]);
+        }
+
+        function startVoiceRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("আপনার ব্রাউজারে Voice Recognition সমর্থিত নয়।");
+                return;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'bn-IN';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            const statusText = document.getElementById('voiceStatusText');
+            statusText.innerText = "🎙️ শুনছি... বলুন (Listening...)";
+
+            recognition.onresult = function(event) {
+                const speechResult = event.results[0][0].transcript.toLowerCase();
+                statusText.innerText = `বললেন: "${speechResult}"`;
+
+                for (let k in rawDishes) {
+                    const dishName = rawDishes[k].name.toLowerCase();
+                    if (speechResult.includes(dishName) || dishName.includes(speechResult)) {
+                        addToCart(rawDishes[k].name, rawDishes[k].price, rawDishes[k].category);
+                        alert(`🤖 AI Added: ${rawDishes[k].name}`);
+                        return;
+                    }
+                }
+                alert(`AI Parser: কোনো নির্দিষ্ট খাবারের নাম মেলানো যায়নি ("${speechResult}")`);
+            };
+            recognition.start();
+        }
+
+        function openTableSplitManagerModal() {
+            document.getElementById('tableSplitManagerModal').classList.remove('hidden');
+            document.getElementById('tableSplitManagerModal').classList.add('flex');
+        }
+
+        function closeTableSplitManagerModal() {
+            document.getElementById('tableSplitManagerModal').classList.add('hidden');
+            document.getElementById('tableSplitManagerModal').classList.remove('flex');
+        }
+
+        function executeTableSplit() {
+            const baseTable = document.getElementById('splitBaseTableSelect').value;
+            const partsCount = parseInt(document.getElementById('splitPartCountSelect').value) || 2;
+            const alphabet = ['A', 'B', 'C', 'D'];
+            const subTables = [];
+
+            for (let i = 0; i < partsCount; i++) {
+                subTables.push(`${baseTable}${alphabet[i]}`);
+            }
+
+            activeSplitTablesMap[baseTable] = subTables;
+            alert(`✅ Table ${baseTable} split into: ${subTables.join(', ')}!`);
+            closeTableSplitManagerModal();
+            renderTableGrid();
+        }
+
+        function revertTableSplit() {
+            const baseTable = document.getElementById('splitBaseTableSelect').value;
+            delete activeSplitTablesMap[baseTable];
+            alert(`Table ${baseTable} merged back to a single table.`);
+            closeTableSplitManagerModal();
+            renderTableGrid();
+        }
+
+        function logoutDevice() {
+            if (confirm("Release Waiter Device slot?")) {
+                localStorage.removeItem('CV_WAITER_DEV_ID');
+                sessionStorage.removeItem('WAITER_AUTHENTICATED');
+                window.location.reload();
+            }
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); deferredPrompt = e;
+        });
+        function installAppDirectly() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+            } else {
+                alert("ব্রাউজার মেনু থেকে 'Add to Home screen' চাপুন।");
+            }
+        }
+    </script>
+    <script type="module">
+    import { api } from '../api.js';
+
+    const REST_ID = 'REST_তোমার_আসল_আইডি_এখানে_দাও';
+
+    window.submitWaiterOrder = async function() {
+        try {
+            const orderData = {
+                restaurantId: REST_ID,
+                tableNo: document.getElementById('tableNo').value || "Table-1",
+                items: [
+                    // উদাহরণস্বরূপ আইটেম, তোমার ফর্মের সিলেক্ট করা আইটেম এখানে বসাবে
+                    { name: "Fried Rice", price: 180, qty: 2 }
+                ]
+            };
+            const res = await api.createWaiterOrder(orderData);
+            alert("Waiter Order Placed Successfully! Order ID: " + res.orderId);
+        } catch (err) {
+            alert("Failed to place order: " + err.message);
+        }
+    };
+</script>
+</body>
+</html>

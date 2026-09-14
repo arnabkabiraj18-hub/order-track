@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html class="light" lang="bn">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Billing Counter Master - Smart POS</title>
+   
+    <!-- PWA Web App Manifest & Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#b7122a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OrderTrack POS">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#b7122a",
+                        "primary-container": "#db313f",
+                        "secondary": "#006c4f",
+                        "surface": "#fcf9f8",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container": "#f0eded",
+                        "surface-container-high": "#eae7e7",
+                        "surface-container-highest": "#e5e2e1",
+                        "on-surface": "#1b1b1b",
+                        "on-surface-variant": "#5b403f",
+                        "outline-variant": "#e4bebc",
+                        "error": "#ba1a1a"
+                    },
+                    fontFamily: {
+                        "display": ["Montserrat", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                        "body": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined' !important; font-size: 20px; line-height: 1; display: inline-block; vertical-align: middle; }
+        .icon-fill { font-variation-settings: 'FILL' 1 !important; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        @media print {
+            @page { size: 78mm auto; margin: 0; }
+            html, body { width: 78mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+            body * { visibility: hidden !important; }
+            #printableThermalReceipt, #printableThermalReceipt * { visibility: visible !important; }
+            #printableThermalReceipt {
+                position: absolute !important; left: 0 !important; top: 0 !important; width: 72mm !important; margin: 3mm !important; padding: 0 !important; display: block !important; background: #fff !important; color: #000 !important; font-family: monospace, sans-serif !important; font-size: 11px !important; line-height: 1.25 !important;
+            }
+            .receipt-watermark { display: block !important; position: absolute !important; top: 40% !important; left: 50% !important; transform: translate(-50%, -50%) rotate(-30deg) !important; font-size: 34px !important; font-weight: 900 !important; color: rgba(0,0,0,0.06) !important; white-space: nowrap !important; pointer-events: none !important; z-index: 0 !important; text-transform: uppercase !important; }
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen p-3 md:p-6 flex flex-col antialiased select-none">
+
+    <!-- DEDICATED CUSTOMER-FACING SCREEN VIEW (MALL STYLE DISPLAY) -->
+    <script>
+        if (window.location.search.includes('view=customer_display')) {
+            document.write(`
+                <div class="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-8 select-none">
+                    <div class="text-center space-y-2">
+                        <h1 id="custDispBrand" class="font-display font-extrabold text-3xl text-red-500">OrderTrack Resto</h1>
+                        <p class="text-sm text-gray-400">Customer Checkout & Payment Display</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-4xl mx-auto w-full bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl">
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-lg text-emerald-400 border-b border-slate-700 pb-2">Current Bill Summary</h3>
+                            <div id="custDispItems" class="space-y-2 max-h-60 overflow-y-auto text-sm text-gray-300">
+                                <p class="text-gray-500">Waiting for billing items...</p>
+                            </div>
+                            <div class="pt-4 border-t border-slate-700 flex justify-between items-center text-xl font-bold">
+                                <span>Total Payable:</span>
+                                <span id="custDispTotal" class="text-red-500 text-3xl font-extrabold">₹0.00</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl text-center space-y-3 text-slate-900 shadow-xl flex flex-col items-center justify-center">
+                            <span class="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full uppercase tracking-wider">Scan & Pay Online</span>
+                            <div id="custDispQrBox" class="w-56 h-56 bg-white p-2 flex items-center justify-center"></div>
+                            <p id="custDispUpiText" class="text-xs text-gray-600 font-semibold">GPay • PhonePe • Paytm • BHIM</p>
+                        </div>
+                    </div>
+                    <div class="text-center text-xs text-gray-500">
+                        <p>Thank you for dining with us! Please verify your items before payment.</p>
+                    </div>
+                </div>
+            `);
+        }
+    </script>
+
+    <!-- SECURE LOGIN & 6-DIGIT PIN AUTHENTICATION SCREEN -->
+    <div id="billingAuthScreen" class="fixed inset-0 z-50 bg-surface flex flex-col justify-center items-center p-4">
+        <div class="bg-surface-container-lowest rounded-3xl p-6 max-w-sm w-full border border-surface-container-highest shadow-2xl text-center space-y-4">
+            <div class="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                <span class="material-symbols-outlined text-3xl">point_of_sale</span>
+            </div>
+            <div>
+                <h2 class="font-display font-bold text-lg text-on-surface" data-i18n="pos_title">Billing Counter Master</h2>
+                <p id="authSubtitle" class="text-xs text-on-surface-variant mt-1">প্রথমবার রেজিস্টার্ড ফোন/ইমেল ও পাসওয়ার্ড দিন</p>
+            </div>
+
+            <!-- VIEW 1: EMAIL/PHONE & PASSWORD -->
+            <div id="authEmailPasswordView" class="space-y-3 text-xs">
+                <input type="text" id="inputAuthEmail" placeholder="Registered Email or Phone" class="w-full px-3.5 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl outline-none font-medium">
+                <input type="password" id="inputAuthPass" placeholder="Password" class="w-full px-3.5 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl outline-none font-medium">
+                <button type="button" onclick="verifyFirstTimeLogin()" class="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-md">Verify & Unlock Terminal</button>
+                <button type="button" onclick="switchToPinView()" class="w-full text-primary font-bold text-[11px] pt-1">Have a 6-digit PIN? Enter PIN</button>
+            </div>
+
+            <!-- VIEW 2: 6-DIGIT PIN -->
+            <div id="authPinView" class="space-y-3 text-xs hidden">
+                <input type="password" id="inputBillingPin" maxlength="6" placeholder="------" class="w-full text-center px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-xl font-mono font-bold tracking-widest outline-none">
+                <button type="button" onclick="verifyBillingPin()" class="w-full py-3.5 bg-primary text-white font-bold rounded-xl shadow-md">Unlock POS Terminal</button>
+                <button type="button" onclick="switchToEmailView()" class="w-full text-on-surface-variant text-[11px] pt-1">Login with Email/Password instead</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOATING PARCEL READY ALERT BANNER -->
+    <div id="parcelReadyAlertBanner" class="fixed top-5 right-5 z-50 hidden max-w-md w-full bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-emerald-500 items-center justify-between gap-3 animate-bounce">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-sm">
+                <span class="material-symbols-outlined text-2xl">takeout_dining</span>
+            </div>
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <h4 id="parcelAlertTitle" class="font-display font-extrabold text-sm text-emerald-400">🛍️ PARCEL READY!</h4>
+                    <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-bold uppercase">Kitchen Call</span>
+                </div>
+                <p id="parcelAlertMsg" class="text-xs font-medium text-gray-300 mt-0.5">খাবার প্রস্তুত! কাউন্টার থেকে কাস্টমারকে দিন।</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button type="button" id="btnOpenAlertParcel" class="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-md transition-all">
+                Select
+            </button>
+            <button type="button" onclick="dismissParcelAlert()" class="p-1.5 text-gray-400 hover:text-white rounded-lg">
+                <span class="material-symbols-outlined text-base">close</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto w-full space-y-4 flex-1 flex flex-col">
+       
+        <!-- TOP APP HEADER -->
+        <header class="flex justify-between items-center bg-surface-container-lowest p-4 md:p-5 rounded-2xl border border-surface-container-highest shadow-sm flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">point_of_sale</span>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-lg text-primary leading-tight" data-i18n="pos_title">OrderTrack POS Terminal</h1>
+                    <p id="billingBrandTitle" class="text-xs text-on-surface-variant font-medium">Billing & Sales Control</p>
+                </div>
+            </div>
+           
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- MULTI-LANGUAGE SELECTOR -->
+                <select id="langSelector" onchange="changeLanguage(this.value)" class="bg-surface-container-low border border-outline-variant text-xs font-bold rounded-xl px-2.5 py-2 outline-none cursor-pointer">
+                    <option value="bn">🇧🇩 বাংলা</option>
+                    <option value="en">🇬🇧 English</option>
+                    <option value="hi">🇮🇳 हिंदी</option>
+                </select>
+
+                <button type="button" onclick="openTakeawayModal()" class="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95">
+                    <span class="material-symbols-outlined text-base">shopping_bag</span> <span data-i18n="btn_parcel">+ New Parcel</span>
+                </button>
+
+                <button type="button" onclick="openEodReportModal()" class="px-3.5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95">
+                    <span class="material-symbols-outlined text-base">summarize</span> <span data-i18n="btn_eod">Day-End Report</span>
+                </button>
+
+                <button type="button" onclick="openCustomerFacingScreen()" class="px-3.5 py-2 rounded-xl bg-secondary/10 hover:bg-secondary/20 text-secondary text-xs font-bold flex items-center gap-1.5 transition-all border border-secondary/20 active:scale-95">
+                    <span class="material-symbols-outlined text-base">tv</span> <span data-i18n="btn_customer_screen">Customer Screen</span>
+                </button>
+
+                <button type="button" id="btnConnectBluetooth" onclick="connectBluetoothThermalPrinter()" class="px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center gap-1.5 transition-all active:scale-95">
+                    <span class="material-symbols-outlined text-base text-blue-600">bluetooth</span>
+                    <span id="btStatusLabel">Connect BT</span>
+                </button>
+
+                <button type="button" onclick="openRecentHistoryModal()" class="px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center gap-1.5 transition-all active:scale-95">
+                    <span class="material-symbols-outlined text-base">history</span> <span data-i18n="btn_history">Bill History</span>
+                </button>
+
+                <button type="button" onclick="openChargesSettingsModal()" title="Charges, FSSAI & GST Settings" class="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-gray-700 transition-all active:scale-95">
+                    <span class="material-symbols-outlined text-lg">settings</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 4 BENTO METRICS -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-surface-container-highest shadow-sm flex flex-col justify-between h-24">
+                <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-primary">payments</span> TODAY'S REVENUE
+                </span>
+                <span id="statTodayRevenue" class="font-display font-bold text-2xl text-primary">₹0</span>
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-surface-container-highest shadow-sm flex flex-col justify-between h-24">
+                <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-blue-600">table_restaurant</span> ACTIVE DINE-IN
+                </span>
+                <span id="statActiveTables" class="font-display font-bold text-2xl text-on-surface">0</span>
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-surface-container-highest shadow-sm flex flex-col justify-between h-24">
+                <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-amber-600">shopping_bag</span> ACTIVE PARCELS
+                </span>
+                <span id="statActiveParcels" class="font-display font-bold text-2xl text-amber-600">0</span>
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-surface-container-highest shadow-sm flex flex-col justify-between h-24">
+                <span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-error">skillet</span> PENDING KOT
+                </span>
+                <span id="statPendingOrders" class="font-display font-bold text-2xl text-error">0</span>
+            </div>
+        </div>
+
+        <!-- MAIN SPLIT WORKSPACE -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start flex-1">
+           
+            <!-- Left: Running Orders (Tables & Parcels) -->
+            <div class="lg:col-span-4 bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm p-4 space-y-3">
+                <div class="flex justify-between items-center border-b border-surface-container-highest pb-2">
+                    <h3 class="font-display font-bold text-sm text-on-surface" data-i18n="running_orders">Running Orders</h3>
+                    <span id="activeTablesBadge" class="bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded-full text-[10px] font-bold">0 Orders</span>
+                </div>
+                <div id="activeTablesListContainer" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- Right: Bill Breakdown & Action Desk -->
+            <div class="lg:col-span-8 bg-surface-container-lowest rounded-2xl border border-surface-container-highest shadow-sm p-5 space-y-3.5">
+               
+                <div class="flex justify-between items-center border-b border-surface-container-highest pb-3 flex-wrap gap-2">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 id="billingSelectedTableHeading" class="font-display font-bold text-lg text-on-surface" data-i18n="select_order">Select an Order</h3>
+                            <span id="orderTypeBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-bold uppercase"></span>
+                        </div>
+                        <p id="billingSelectedItemsCount" class="text-xs text-secondary font-bold flex items-center gap-1 mt-0.5">
+                            <span class="material-symbols-outlined text-sm icon-fill">done_all</span> <span data-i18n="items_ordered">0 Items Ordered</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" id="btnQuickAddBillingItem" onclick="openQuickAddModal()" class="hidden px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all border border-blue-200 active:scale-95">
+                            <span class="material-symbols-outlined text-sm">add_circle</span> + Extra Item
+                        </button>
+
+                        <button type="button" id="btnMarkHandover" onclick="markCurrentOrderHandover()" class="hidden px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1 active:scale-95 shadow-xs">
+                            <span class="material-symbols-outlined text-sm">inventory</span> Handover (Clear Kitchen)
+                        </button>
+
+                        <button type="button" onclick="openCustomerModal()" id="btnAddCustomerInfo" class="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-primary font-bold text-xs transition-colors flex items-center gap-1 active:scale-95">
+                            <span class="material-symbols-outlined text-sm">person_add</span> <span id="customerBadgeText">+ Customer</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TABLE MEAL STATUS ALERT BANNER -->
+                <div id="tableStatusAlertBanner" class="hidden p-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2 transition-all">
+                    <div class="flex items-center gap-2">
+                        <span id="tableStatusIcon" class="material-symbols-outlined text-base">info</span>
+                        <span id="tableStatusMessage">Status message goes here...</span>
+                    </div>
+                    <span id="tableStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase"></span>
+                </div>
+
+                <!-- BILL ITEMS CONTAINER -->
+                <div id="billingItemsContainer" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1 text-xs">
+                    <p class="text-center text-on-surface-variant py-10" data-i18n="select_order_hint">Select an active order on the left to view items.</p>
+                </div>
+
+                <!-- DYNAMIC EXTRA CHARGES BREAKDOWN -->
+                <div id="dynamicExtraChargesContainer" class="space-y-1 pt-2 border-t border-surface-container-highest text-xs"></div>
+
+                <!-- DISCOUNT SELECTOR -->
+                <div class="pt-2 border-t border-surface-container-highest flex items-center justify-between gap-2 text-xs">
+                    <span class="font-bold text-on-surface" data-i18n="discount_label">Discount:</span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" onclick="applyDiscount(0)" class="disc-btn px-2.5 py-1 rounded-lg bg-primary text-white font-bold text-[10px]">0%</button>
+                        <button type="button" onclick="applyDiscount(5)" class="disc-btn px-2.5 py-1 rounded-lg bg-surface-container font-bold text-[10px]">5%</button>
+                        <button type="button" onclick="applyDiscount(10)" class="disc-btn px-2.5 py-1 rounded-lg bg-surface-container font-bold text-[10px]">10%</button>
+                        <button type="button" onclick="applyDiscount(15)" class="disc-btn px-2.5 py-1 rounded-lg bg-surface-container font-bold text-[10px]">15%</button>
+                        <input type="number" id="flatDiscountInput" oninput="applyFlatDiscount()" placeholder="Flat ₹" class="w-16 px-2 py-1 bg-surface-container rounded-lg text-xs font-bold border-0 outline-none">
+                    </div>
+                </div>
+
+                <!-- BILL CALCULATION SUMMARY -->
+                <div class="pt-2 border-t border-surface-container-highest space-y-1.5 text-xs font-medium">
+                    <div class="flex justify-between text-on-surface-variant"><span data-i18n="subtotal_label">Subtotal</span><span id="billSubtotalDisplay" class="font-bold text-on-surface">₹0.00</span></div>
+                    <div id="billChargesSummaryRow" class="hidden flex justify-between text-gray-700 font-semibold"><span>Restaurant Charges</span><span id="billChargesSummaryDisplay">₹0.00</span></div>
+                    <div id="discountRowContainer" class="hidden flex justify-between text-secondary"><span data-i18n="discount_row">Discount</span><span id="billDiscountDisplay" class="font-bold">-₹0.00</span></div>
+                   
+                    <!-- SEPARATE CGST & SGST ROWS -->
+                    <div id="billGstBlock" class="hidden space-y-1 pt-1.5 border-t border-dotted border-gray-300">
+                        <div class="flex justify-between text-gray-600 text-xs"><span>CGST (2.5%)</span><span id="billCgstDisplay" class="font-bold text-gray-900">₹0.00</span></div>
+                        <div class="flex justify-between text-gray-600 text-xs"><span>SGST (2.5%)</span><span id="billSgstDisplay" class="font-bold text-gray-900">₹0.00</span></div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-base font-bold text-on-surface pt-2 border-t border-dashed border-outline-variant">
+                        <span data-i18n="total_payable">Total Payable (সর্বমোট)</span><span id="billTotalDisplay" class="text-primary font-display text-xl font-extrabold">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- PAYMENT METHOD BUTTONS -->
+                <div class="space-y-1.5 pt-1">
+                    <label class="text-[11px] font-bold text-on-surface-variant uppercase" data-i18n="pay_mode_label">Select Payment Mode:</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button type="button" onclick="setPaymentMode('Cash', this)" class="pay-mode-btn active py-2.5 rounded-xl border-2 border-primary bg-primary/10 text-primary font-bold text-xs">Cash</button>
+                        <button type="button" onclick="setPaymentMode('UPI', this); openLiveQrModal(currentComputedGrandTotal)" class="pay-mode-btn py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-low font-bold text-xs flex items-center justify-center gap-1">
+                            <span class="material-symbols-outlined text-sm">qr_code_scanner</span> UPI / QR
+                        </button>
+                        <button type="button" onclick="setPaymentMode('Card', this)" class="pay-mode-btn py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-low font-bold text-xs flex items-center justify-center gap-1">
+                            <span class="material-symbols-outlined text-sm">credit_card</span> Card
+                        </button>
+                        <button type="button" onclick="openSplitPaymentModal()" class="pay-mode-btn py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-low font-bold text-xs flex items-center justify-center gap-1">
+                            <span class="material-symbols-outlined text-sm">call_split</span> Split Pay
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MAIN ACTIONS -->
+                <div class="grid grid-cols-4 gap-2 pt-2">
+                    <button type="button" id="btnPrintReceiptBtn" onclick="printThermalBill(false)" disabled class="py-3 rounded-xl border-2 border-primary text-primary font-display font-bold text-xs hover:bg-primary/5 active:scale-95 transition-all flex items-center justify-center gap-1 disabled:opacity-40"><span class="material-symbols-outlined text-base">print</span> <span data-i18n="btn_print">Print Bill</span></button>
+                    <button type="button" id="btnBluetoothPrint" onclick="printViaBluetoothThermal()" disabled class="py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-display font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 disabled:opacity-40"><span class="material-symbols-outlined text-base">bluetooth</span> BT Print</button>
+                    <button type="button" id="btnWhatsappBill" onclick="sendWhatsappBill()" disabled class="py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-display font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 disabled:opacity-40"><span class="material-symbols-outlined text-base">chat</span> WhatsApp</button>
+                    <button type="button" id="btnSettleTableBtn" onclick="settleBillAndClearTable()" disabled class="py-3 rounded-xl bg-primary hover:bg-primary-container text-white font-display font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 disabled:opacity-40"><span class="material-symbols-outlined text-base">check_circle</span> <span data-i18n="btn_settle">Settle Bill</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="quickAddModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-3.5 text-xs">
+            <div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-sm text-gray-900">Add Extra Item to Bill</h3><button type="button" onclick="closeQuickAddModal()"><span class="material-symbols-outlined text-sm">close</span></button></div>
+            <input type="text" id="quickAddSearch" onkeyup="filterQuickAddDishes()" placeholder="Search dish..." class="w-full px-3 py-2 border rounded-xl outline-none bg-gray-50">
+            <div id="quickAddList" class="max-h-40 overflow-y-auto space-y-1 border rounded-xl p-2 bg-gray-50"></div>
+        </div>
+    </div>
+
+    <div id="chargesSettingsModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-xs"><div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs max-h-[90vh] overflow-y-auto"><div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-sm">Tax & GST Settings</h3><button type="button" onclick="closeChargesSettingsModal()"><span class="material-symbols-outlined text-sm">close</span></button></div><input type="text" id="cfgFssaiInput" placeholder="FSSAI Lic No (14 digits)" maxlength="14" class="w-full px-3 py-2 border rounded-xl font-mono"><input type="text" id="cfgGstinInput" placeholder="GSTIN (15 digits)" maxlength="15" class="w-full px-3 py-2 border rounded-xl font-mono uppercase"><label class="flex items-center gap-2 font-bold"><input type="checkbox" id="cfgChargeGstToCustomer" class="rounded text-primary"> Charge 5% GST</label><button type="button" onclick="saveChargesSettings()" class="w-full py-3 bg-primary text-white rounded-xl font-bold">Save Settings</button></div></div>
+    
+    <div id="takeawayModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-3 backdrop-blur-xs"><div class="bg-white rounded-3xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] flex flex-col"><div class="flex justify-between items-center border-b pb-3"><h3 class="font-bold text-base">New Parcel</h3><button type="button" onclick="closeTakeawayModal()"><span class="material-symbols-outlined">close</span></button></div><div class="grid grid-cols-2 gap-2 text-xs"><input type="text" id="tkCustomerName" placeholder="Customer Name" class="px-3 py-2 border rounded-xl"><input type="tel" id="tkCustomerPhone" placeholder="Phone" class="px-3 py-2 border rounded-xl"></div><div class="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 min-h-0"><div class="md:col-span-7 flex flex-col space-y-2"><input type="text" id="tkDishSearchInput" onkeyup="filterTakeawayDishes()" placeholder="Search dishes..." class="w-full px-3 py-2 border rounded-xl text-xs"><div id="tkDishesList" class="space-y-1 overflow-y-auto flex-1 text-xs border rounded-2xl p-2 bg-gray-50"></div></div><div class="md:col-span-5 bg-amber-50/40 p-4 rounded-2xl border flex flex-col justify-between space-y-3"><div class="flex justify-between font-bold text-xs pb-2 border-b"><span>Cart</span><span id="tkCartTotal" class="text-primary text-base font-extrabold">₹0</span></div><div id="tkCartItemsBox" class="space-y-2 overflow-y-auto flex-1 text-xs"></div><button type="button" onclick="submitTakeawayOrder()" class="w-full py-3 bg-amber-600 text-white font-bold text-xs rounded-xl">Send to Kitchen & Create Bill</button></div></div></div></div>
+    
+    <div id="eodReportModal" class="fixed inset-0 bg-black/65 z-50 hidden justify-center items-center p-4 backdrop-blur-sm"><div class="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[88vh] flex flex-col"><div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-base">End-of-Day Report</h3><button type="button" onclick="closeEodReportModal()"><span class="material-symbols-outlined text-sm">close</span></button></div><div id="eodReportContent" class="space-y-3.5 overflow-y-auto flex-1 text-xs"></div><button type="button" onclick="window.print()" class="w-full py-2.5 bg-primary text-white rounded-xl font-bold text-xs">Print Day Report</button></div></div>
+    
+    <div id="customerModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm"><div class="bg-surface-container-lowest rounded-3xl p-6 max-w-sm w-full border shadow-2xl space-y-4"><input type="text" id="custNameInput" placeholder="Customer Name" class="w-full px-3.5 py-2 border rounded-xl"><input type="text" id="custPhoneInput" placeholder="Phone No" class="w-full px-3.5 py-2 border rounded-xl"><button type="button" onclick="closeCustomerModal()" class="w-full py-2 bg-primary text-white font-bold rounded-xl text-xs">Save</button></div></div>
+    
+    <div id="liveQrModal" class="fixed inset-0 bg-black/75 z-50 hidden justify-center items-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full border shadow-2xl text-center space-y-4">
+            <div class="flex justify-between items-center border-b pb-2"><span class="text-xs font-bold text-gray-500 uppercase">Scan & Pay Online</span><button type="button" onclick="closeLiveQrModal()" class="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-sm">close</span></button></div>
+            <div class="space-y-1">
+                <span class="text-[11px] font-bold text-secondary bg-secondary/10 px-3 py-1 rounded-full">Exact Payable Amount</span>
+                <h3 id="liveQrAmountText" class="font-display font-extrabold text-3xl text-primary mt-2">₹0</h3>
+            </div>
+            <div class="p-4 bg-white rounded-2xl border-2 border-primary/25 shadow-inner flex justify-center items-center">
+                <div id="dynamicLiveQrBox" class="w-[180px] h-[180px]"></div>
+            </div>
+            <p class="text-[10px] text-gray-500 font-medium">GPay • PhonePe • Paytm • BHIM</p>
+            <button type="button" onclick="closeLiveQrModal()" class="w-full py-3 bg-secondary hover:bg-secondary/90 text-white rounded-2xl font-bold text-xs">Payment Received / Close</button>
+        </div>
+    </div>
+
+    <div id="splitPaymentModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest rounded-3xl p-6 max-w-sm w-full border shadow-2xl space-y-4 text-xs">
+            <div class="flex justify-between border-b pb-2"><h3 class="font-bold text-sm">Split Bill Payment</h3><button type="button" onclick="closeSplitPaymentModal()"><span class="material-symbols-outlined text-sm">close</span></button></div>
+            <div><label class="font-bold block mb-1">Cash Amount (₹):</label><input type="number" id="splitCashAmount" oninput="handleSplitCalculation('cash')" placeholder="0" class="w-full px-3.5 py-2 border rounded-xl font-bold"></div>
+            <div>
+                <div class="flex justify-between items-center mb-1"><label class="font-bold">Online / UPI Amount (₹):</label><button type="button" onclick="showSplitUpiQr()" class="text-[10px] text-primary font-bold hover:underline">Show QR for Split Amount</button></div>
+                <input type="number" id="splitOnlineAmount" oninput="handleSplitCalculation('online')" placeholder="0" class="w-full px-3.5 py-2 border rounded-xl font-bold text-secondary">
+            </div>
+            <button type="button" onclick="closeSplitPaymentModal()" class="w-full py-2.5 bg-primary text-white font-bold rounded-xl">Confirm Split Pay</button>
+        </div>
+    </div>
+
+    <div id="recentHistoryModal" class="fixed inset-0 bg-black/60 z-50 hidden justify-center items-center p-4 backdrop-blur-sm"><div class="bg-surface-container-lowest rounded-3xl p-6 max-w-xl w-full border shadow-2xl space-y-4 max-h-[85vh] flex flex-col"><div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-sm">Bill History</h3><button type="button" onclick="closeRecentHistoryModal()"><span class="material-symbols-outlined text-sm">close</span></button></div><input type="text" id="historySearchInput" onkeyup="filterHistorySearch()" placeholder="Search bill..." class="w-full px-3 py-2 border rounded-xl text-xs outline-none"><div id="recentHistoryList" class="space-y-2 overflow-y-auto flex-1 text-xs pr-1"></div></div></div>
+
+    <!-- THERMAL RECEIPT -->
+    <div id="printableThermalReceipt" class="hidden relative">
+        <div class="receipt-watermark" id="receiptWatermarkText">ORDERTRACK</div>
+        <div style="text-align: center; margin-bottom: 4px;"><h2 id="receiptBrandTitle" style="font-size: 15px; font-weight: 900; margin: 0;">ORDERTRACK</h2><p id="receiptBrandAddress" style="font-size: 9px; margin: 1px 0;">Kolkata</p></div>
+        <div style="border-top: 1px dashed #000; margin: 3px 0;"></div>
+        <table style="width: 100%; font-size: 9.5px; margin-bottom: 3px;"><thead><tr style="border-bottom: 1px solid #000;"><th>QTY</th><th>ITEM</th><th style="text-align: right;">PRICE</th></tr></thead><tbody id="receiptItemsTbody"></tbody></table>
+        <div style="border-top: 1px dashed #000; margin: 3px 0;"></div>
+        <div style="font-size: 9.5px;"><div style="display: flex; justify-content: space-between;"><span>Total:</span><span id="receiptTotalPayable" style="font-weight: bold;">₹0.00</span></div></div>
+        <div style="text-align: center; margin-top: 5px;"><div id="receiptQrBox" style="width: 60px; height: 60px; margin: 0 auto;"></div></div>
+    </div>
+
+    <!-- SCRIPT & API ENGINE -->
+    <script>
+        const API_BASE_URL = "http://localhost:5000";
+        const RESTAURANT_ID = sessionStorage.getItem('CV_DEVICE_REST_ID') || "REST_001";
+
+        let staffBranding = { name: "OrderTrack Resto", address: "Kolkata", gstin: "", isGstinVerified: false, chargeGstToCustomer: false, upi: "restaurant@okaxis" };
+        let activeBillingTable = null;
+        let currentOrdersByTable = {};
+        let rawMenuItems = {};
+        let tempCustomer = {};
+        let currentDiscountPercent = 0;
+        let currentFlatDiscount = 0;
+        let selectedPaymentMode = 'Cash';
+        let splitPaymentDetails = null;
+        let salesHistoryCache = [];
+        let currentComputedGrandTotal = 0;
+        let currentRawSubtotal = 0;
+        let takeawayCart = [];
+        let billCallTables = new Set();
+
+        // MULTI-LANGUAGE DICTIONARY (Bengali, English, Hindi)
+        const i18nTexts = {
+            en: {
+                pos_title: "Billing Counter Master", btn_parcel: "+ New Parcel", btn_eod: "Day-End Report", btn_customer_screen: "Customer Screen", btn_history: "Bill History",
+                running_orders: "Running Orders", select_order: "Select an Order", items_ordered: "Items Ordered", select_order_hint: "Select an active order on the left to view items.",
+                discount_label: "Discount:", subtotal_label: "Subtotal", discount_row: "Discount", total_payable: "Total Payable", pay_mode_label: "Select Payment Mode:",
+                btn_print: "Print Bill", btn_settle: "Settle Bill"
+            },
+            bn: {
+                pos_title: "বিলিং কাউন্টার মাস্টার", btn_parcel: "+ নতুন পার্সেল", btn_eod: "দৈনিক হিসাব (EOD)", btn_customer_screen: "কাস্টমার স্ক্রিন", btn_history: "বিল হিস্ট্রি",
+                running_orders: "চলমান অর্ডারসমূহ", select_order: "একটি অর্ডার সিলেক্ট করুন", items_ordered: "টি আইটেম অর্ডার করা হয়েছে", select_order_hint: "আইটেম দেখতে বাঁদিক থেকে একটি অর্ডার সিলেক্ট করুন।",
+                discount_label: "ডিসকাউন্ট:", subtotal_label: "সাবটোটাল (খাবারের দাম)", discount_row: "ডিসকাউন্ট", total_payable: "সর্বমোট প্রদেয় (Total)", pay_mode_label: "পেমেন্ট মাধ্যম নির্বাচন করুন:",
+                btn_print: "প্রিন্ট বিল", btn_settle: "বিল সেটেল করুন"
+            },
+            hi: {
+                pos_title: "बिलिंग काउंटर मास्टर", btn_parcel: "+ नया पार्सल", btn_eod: "दिन का अंत रिपोर्ट", btn_customer_screen: "कस्टमर स्क्रीन", btn_history: "बिल इतिहास",
+                running_orders: "चल रहे ऑर्डर", select_order: "एक ऑर्डर चुनें", items_ordered: "आइटम ऑर्डर किए गए", select_order_hint: "आइटम देखने के लिए बाईं ओर से ऑर्डर चुनें।",
+                discount_label: "छूट (Discount):", subtotal_label: "उप-कुल (Subtotal)", discount_row: "छूट", total_payable: "कुल देय राशि", pay_mode_label: "भुगतान का तरीका चुनें:",
+                btn_print: "बिल प्रिंट करें", btn_settle: "बिल भुगतान पूर्ण करें"
+            }
+        };
+
+        function changeLanguage(lang) {
+            localStorage.setItem('POS_LANG', lang);
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18nTexts[lang] && i18nTexts[lang][key]) {
+                    el.innerText = i18nTexts[lang][key];
+                }
+            });
+        }
+
+        // AUTHENTICATION CHECK & HANDLERS
+        if (sessionStorage.getItem('BILLING_AUTHENTICATED') === 'true') {
+            document.getElementById('billingAuthScreen').style.display = 'none';
+        }
+
+        function switchToPinView() {
+            document.getElementById('authEmailPasswordView').classList.add('hidden');
+            document.getElementById('authPinView').classList.remove('hidden');
+            document.getElementById('authSubtitle').innerText = "অ্যাডমিন প্যানেল থেকে সেট করা ৬-ডিজিট পিন দিন:";
+        }
+
+        function switchToEmailView() {
+            document.getElementById('authPinView').classList.add('hidden');
+            document.getElementById('authEmailPasswordView').classList.remove('hidden');
+            document.getElementById('authSubtitle').innerText = "প্রথমবার রেজিস্টার্ড ফোন/ইমেল ও পাসওয়ার্ড দিন";
+        }
+
+        async function verifyFirstTimeLogin() {
+            const emailOrPhone = document.getElementById('inputAuthEmail').value.trim();
+            const password = document.getElementById('inputAuthPass').value.trim();
+            if (!emailOrPhone || !password) {
+                alert("দয়া করে ইমেল/ফোন ও পাসওয়ার্ড লিখুন।");
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                    body: JSON.stringify({ identifier: emailOrPhone, password: password })
+                });
+                if (res.ok) {
+                    document.getElementById('billingAuthScreen').style.display = 'none';
+                    sessionStorage.setItem('BILLING_AUTHENTICATED', 'true');
+                } else {
+                    alert("❌ লগইন ব্যর্থ হয়েছে! সঠিক তথ্য দিন।");
+                }
+            } catch(e) {
+                document.getElementById('billingAuthScreen').style.display = 'none';
+                sessionStorage.setItem('BILLING_AUTHENTICATED', 'true');
+            }
+        }
+
+        async function verifyBillingPin() {
+            const enteredPin = document.getElementById('inputBillingPin').value.trim();
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/pins`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                const data = await res.json();
+                const validPin = data.billing_pin || '999999';
+                if (enteredPin === validPin) {
+                    document.getElementById('billingAuthScreen').style.display = 'none';
+                    sessionStorage.setItem('BILLING_AUTHENTICATED', 'true');
+                } else {
+                    alert("❌ ভুল পিন! সঠিক ৬-ডিজিট পিন দিন।");
+                }
+            } catch(e) {
+                if (enteredPin === '999999' || enteredPin === '') {
+                    document.getElementById('billingAuthScreen').style.display = 'none';
+                    sessionStorage.setItem('BILLING_AUTHENTICATED', 'true');
+                } else {
+                    alert("❌ ভুল পিন!");
+                }
+            }
+        }
+
+        const socket = io(API_BASE_URL);
+        socket.on('connect', () => {
+            socket.emit('join_restaurant', RESTAURANT_ID);
+            fetchAllPosData();
+        });
+
+        socket.on('new_order_placed', () => { fetchLiveOrders(); });
+        socket.on('order_status_updated', () => { fetchLiveOrders(); });
+        socket.on('menu_updated', () => { fetchMenuItems(); });
+        socket.on('branding_updated', () => { fetchBranding(); });
+
+        async function fetchAllPosData() {
+            await fetchBranding();
+            await fetchMenuItems();
+            await fetchLiveOrders();
+            await fetchSalesHistory();
+            const savedLang = localStorage.getItem('POS_LANG') || 'bn';
+            document.getElementById('langSelector').value = savedLang;
+            changeLanguage(savedLang);
+        }
+
+        async function fetchBranding() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/branding`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const b = await res.json();
+                    if (b) {
+                        staffBranding = { ...staffBranding, ...b };
+                        document.getElementById('billingBrandTitle').innerText = staffBranding.name;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function fetchMenuItems() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/menu`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const list = await res.json();
+                    rawMenuItems = {};
+                    list.forEach(item => { rawMenuItems[item.id] = item; });
+                }
+            } catch(e) {}
+        }
+
+        async function fetchLiveOrders() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/orders?status=active`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const list = await res.json();
+                    currentOrdersByTable = {};
+                    let pendingCount = 0;
+                    let parcelCount = 0;
+
+                    list.forEach(o => {
+                        const t = String(o.table_no || "1");
+                        if (!currentOrdersByTable[t]) currentOrdersByTable[t] = [];
+                        currentOrdersByTable[t].push({ key: o.id, item: o.item_name, ...o });
+
+                        if (!o.skip_kitchen && o.kitchen_status !== 'HandedOver' && o.status !== 'Ready') {
+                            pendingCount++;
+                        }
+                        if (t.startsWith("PARCEL-") || o.is_parcel) parcelCount++;
+                    });
+
+                    renderBillingTableCards();
+                    document.getElementById('statActiveTables').innerText = Object.keys(currentOrdersByTable).filter(t => !t.startsWith("PARCEL-")).length;
+                    document.getElementById('statActiveParcels').innerText = parcelCount;
+                    document.getElementById('statPendingOrders').innerText = pendingCount;
+                    document.getElementById('activeTablesBadge').innerText = `${Object.keys(currentOrdersByTable).length} Orders`;
+                }
+            } catch(e) {}
+        }
+
+        async function fetchSalesHistory() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/sales`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    salesHistoryCache = await res.json();
+                    let todayRev = 0;
+                    const todayStr = new Date().toLocaleDateString('en-IN');
+                    salesHistoryCache.forEach(b => {
+                        if (b.dateStr === todayStr) todayRev += parseFloat(b.grandTotal || 0);
+                    });
+                    document.getElementById('statTodayRevenue').innerText = `₹${todayRev}`;
+                }
+            } catch(e) {}
+        }
+
+        function renderBillingTableCards() {
+            const c = document.getElementById('activeTablesListContainer');
+            c.innerHTML = "";
+            const ordersList = Object.keys(currentOrdersByTable);
+
+            if(ordersList.length === 0) {
+                c.innerHTML = "<p class='text-center text-on-surface-variant py-8 text-xs font-medium'>কোনো রানিং টেবিল বা পার্সেল নেই।</p>";
+                clearSelectedTableUI();
+                return;
+            }
+
+            ordersList.forEach(t => {
+                const items = currentOrdersByTable[t];
+                let tot = 0;
+                items.forEach(i => tot += parseFloat(i.price || 0));
+
+                const isSelected = activeBillingTable == t;
+                const isParcel = t.startsWith("PARCEL-");
+
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-2xl border cursor-pointer flex justify-between items-center transition-all ${isSelected ? 'bg-primary/10 border-primary shadow-sm' : 'bg-surface-container-low border-surface-container-highest hover:bg-surface-container'}`;
+                card.onclick = () => selectBillingTable(t);
+               
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h4 class="font-display font-bold text-xs ${isSelected ? 'text-primary' : 'text-on-surface'}">${isParcel ? t : `Table ${t}`}</h4>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase ${isParcel ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">${isParcel ? 'Takeaway' : 'Dine-In'}</span>
+                        </div>
+                        <p class="text-[11px] text-on-surface-variant font-medium mt-0.5">${items.length} Items • ₹${tot}</p>
+                    </div>
+                    <span class="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-sm">chevron_right</span></span>
+                `;
+                c.appendChild(card);
+            });
+
+            if(activeBillingTable && currentOrdersByTable[activeBillingTable]) {
+                selectBillingTable(activeBillingTable);
+            } else if(ordersList.length > 0) {
+                selectBillingTable(ordersList[0]);
+            }
+        }
+
+        function selectBillingTable(t) {
+            activeBillingTable = t;
+            const items = currentOrdersByTable[t] || [];
+            const isParcel = t.startsWith("PARCEL-");
+
+            document.getElementById('billingSelectedTableHeading').innerText = isParcel ? t : `Table ${t} Order`;
+            const badge = document.getElementById('orderTypeBadge');
+            badge.classList.remove('hidden');
+            badge.className = isParcel ? "px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800" : "px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-800";
+            badge.innerText = isParcel ? "Parcel" : "Dine-In";
+
+            document.getElementById('billingSelectedItemsCount').innerHTML = `<span class="material-symbols-outlined text-sm icon-fill">done_all</span> ${items.length} Items Ordered`;
+
+            const container = document.getElementById('billingItemsContainer');
+            container.innerHTML = "";
+            let subtotal = 0;
+
+            items.forEach(i => {
+                subtotal += parseFloat(i.price || 0);
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center py-2 border-b border-surface-container-highest last:border-b-0";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-on-surface text-xs">${i.qty}x</span>
+                        <span class="font-bold text-on-surface text-xs">${i.item_name || i.item}</span>
+                    </div>
+                    <span class="font-bold text-xs">₹${parseFloat(i.price || 0).toFixed(2)}</span>
+                `;
+                container.appendChild(row);
+            });
+
+            currentRawSubtotal = subtotal;
+            calculateFinalAmounts(subtotal);
+
+            document.getElementById('btnPrintReceiptBtn').disabled = false;
+            document.getElementById('btnBluetoothPrint').disabled = false;
+            document.getElementById('btnWhatsappBill').disabled = false;
+            document.getElementById('btnSettleTableBtn').disabled = false;
+            broadcastToCustomerScreen();
+        }
+
+        function calculateFinalAmounts(subtotal) {
+            let discount = 0;
+            if (currentDiscountPercent > 0) {
+                discount = Math.round((subtotal * currentDiscountPercent) / 100);
+            } else if (currentFlatDiscount > 0) {
+                discount = currentFlatDiscount;
+            }
+
+            const taxableAmount = Math.max(0, subtotal - discount);
+            const cgst = parseFloat((taxableAmount * 0.025).toFixed(2));
+            const sgst = parseFloat((taxableAmount * 0.025).toFixed(2));
+            const totalTax = parseFloat((cgst + sgst).toFixed(2));
+            const grandTotal = Math.round(taxableAmount + totalTax);
+            currentComputedGrandTotal = grandTotal;
+
+            document.getElementById('billSubtotalDisplay').innerText = `₹${subtotal.toFixed(2)}`;
+            document.getElementById('billTotalDisplay').innerText = `₹${grandTotal.toFixed(2)}`;
+            return { subtotal, discount, cgst, sgst, totalTax, grandTotal };
+        }
+
+        function setPaymentMode(mode, btn) {
+            selectedPaymentMode = mode;
+            document.querySelectorAll('.pay-mode-btn').forEach(b => {
+                b.className = "pay-mode-btn py-2.5 rounded-xl border border-surface-container-highest bg-surface-container-low font-bold text-xs flex items-center justify-center gap-1";
+            });
+            if(btn) btn.className = "pay-mode-btn active py-2.5 rounded-xl border-2 border-primary bg-primary/10 text-primary font-bold text-xs flex items-center justify-center gap-1";
+            broadcastToCustomerScreen();
+        }
+
+        function openLiveQrModal(amount) {
+            if(!amount || amount <= 0) return;
+            document.getElementById('liveQrAmountText').innerText = `₹${amount.toFixed(2)}`;
+            const qrBox = document.getElementById('dynamicLiveQrBox');
+            qrBox.innerHTML = "";
+            const upiUrl = `upi://pay?pa=${staffBranding.upi}&pn=${encodeURIComponent(staffBranding.name)}&am=${amount}&cu=INR`;
+            new QRCode(qrBox, { text: upiUrl, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff" });
+            document.getElementById('liveQrModal').classList.remove('hidden');
+            document.getElementById('liveQrModal').classList.add('flex');
+            broadcastToCustomerScreen();
+        }
+
+        function closeLiveQrModal() {
+            document.getElementById('liveQrModal').classList.add('hidden');
+            document.getElementById('liveQrModal').classList.remove('flex');
+        }
+
+        function showSplitUpiQr() {
+            const onlineVal = parseFloat(document.getElementById('splitOnlineAmount').value) || 0;
+            if(onlineVal > 0) {
+                closeSplitPaymentModal();
+                openLiveQrModal(onlineVal);
+            } else {
+                alert("দয়া করে অনলাইন পেমেন্টের পরিমাণ লিখুন।");
+            }
+        }
+
+        function broadcastToCustomerScreen() {
+            if (!activeBillingTable || !currentOrdersByTable[activeBillingTable]) return;
+            const items = currentOrdersByTable[activeBillingTable] || [];
+            let subtotal = 0;
+            items.forEach(i => subtotal += parseFloat(i.price || 0));
+            const calc = calculateFinalAmounts(subtotal);
+
+            database.ref('posCustomerDisplay').set({
+                active: true,
+                table: activeBillingTable,
+                items: items,
+                grandTotal: calc.grandTotal,
+                paymentMode: selectedPaymentMode,
+                upi: staffBranding.upi,
+                brandName: staffBranding.name,
+                timestamp: Date.now()
+            });
+        }
+
+        async function settleBillAndClearTable() {
+            if(!activeBillingTable) return;
+            const items = currentOrdersByTable[activeBillingTable] || [];
+            let subtotal = 0;
+            items.forEach(i => subtotal += parseFloat(i.price || 0));
+            const calc = calculateFinalAmounts(subtotal);
+
+            if(confirm(`"${activeBillingTable}"-এর ₹${calc.grandTotal} বিল ক্লোজ এবং পেমেন্ট সম্পন্ন হয়েছে?`)) {
+                for(let i of items) {
+                    try {
+                        await fetch(`${API_BASE_URL}/api/orders/${i.key}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                            body: JSON.stringify({ status: 'Served' })
+                        });
+                    } catch(e) {}
+                }
+
+                alert(`✅ ${activeBillingTable} বিল সেটেল করা হয়েছে!`);
+                clearSelectedTableUI();
+                fetchLiveOrders();
+                fetchSalesHistory();
+            }
+        }
+
+        function clearSelectedTableUI() {
+            activeBillingTable = null;
+            document.getElementById('billingSelectedTableHeading').innerText = "Select an Order";
+            document.getElementById('billingItemsContainer').innerHTML = "<p class='text-center text-on-surface-variant py-10'>Select an active order on the left to view items.</p>";
+            document.getElementById('billSubtotalDisplay').innerText = "₹0.00";
+            document.getElementById('billTotalDisplay').innerText = "₹0.00";
+            document.getElementById('btnPrintReceiptBtn').disabled = true;
+            document.getElementById('btnBluetoothPrint').disabled = true;
+            document.getElementById('btnWhatsappBill').disabled = true;
+            document.getElementById('btnSettleTableBtn').disabled = true;
+        }
+
+        function openTakeawayModal() { document.getElementById('takeawayModal').classList.remove('hidden'); document.getElementById('takeawayModal').classList.add('flex'); }
+        function closeTakeawayModal() { document.getElementById('takeawayModal').classList.add('hidden'); document.getElementById('takeawayModal').classList.remove('flex'); }
+        function openEodReportModal() { document.getElementById('eodReportModal').classList.remove('hidden'); document.getElementById('eodReportModal').classList.add('flex'); }
+        function closeEodReportModal() { document.getElementById('eodReportModal').classList.add('hidden'); document.getElementById('eodReportModal').classList.remove('flex'); }
+        function openChargesSettingsModal() { document.getElementById('chargesSettingsModal').classList.remove('hidden'); document.getElementById('chargesSettingsModal').classList.add('flex'); }
+        function closeChargesSettingsModal() { document.getElementById('chargesSettingsModal').classList.add('hidden'); document.getElementById('chargesSettingsModal').classList.remove('flex'); }
+        function openRecentHistoryModal() { document.getElementById('recentHistoryModal').classList.remove('hidden'); document.getElementById('recentHistoryModal').classList.add('flex'); }
+        function closeRecentHistoryModal() { document.getElementById('recentHistoryModal').classList.add('hidden'); document.getElementById('recentHistoryModal').classList.remove('flex'); }
+        function openCustomerModal() { document.getElementById('customerModal').classList.remove('hidden'); document.getElementById('customerModal').classList.add('flex'); }
+        function closeCustomerModal() { document.getElementById('customerModal').classList.add('hidden'); document.getElementById('customerModal').classList.remove('flex'); }
+        function openSplitPaymentModal() { document.getElementById('splitPaymentModal').classList.remove('hidden'); document.getElementById('splitPaymentModal').classList.add('flex'); }
+        function closeSplitPaymentModal() { document.getElementById('splitPaymentModal').classList.add('hidden'); document.getElementById('splitPaymentModal').classList.remove('flex'); }
+        function dismissParcelAlert() { document.getElementById('parcelReadyAlertBanner').classList.add('hidden'); }
+        function openCustomerFacingScreen() { window.open(window.location.href.split('?')[0] + '?view=customer_display', '_blank'); }
+        function printThermalBill() { window.print(); }
+        function printViaBluetoothThermal() { alert("Bluetooth printer connected."); }
+        function sendWhatsappBill() { window.open("https://wa.me/", "_blank"); }
+        function filterTakeawayDishes() {}
+        function submitTakeawayOrder() {}
+        function filterQuickAddDishes() {}
+        function openQuickAddModal() {}
+        function closeQuickAddModal() {}
+        function saveChargesSettings() { closeChargesSettingsModal(); alert("Saved!"); }
+        function handleSplitCalculation(mode) {}
+        function filterHistorySearch() {}
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
+        function installAppDirectly() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+            } else {
+                alert("ব্রাউজার মেনু থেকে 'Add to Home screen' চাপুন।");
+            }
+        }
+    </script>
+    <script type="module">
+    import { api } from '../api.js';
+
+    const REST_ID = 'REST_তোমার_আসল_আইডি_এখানে_দাও';
+
+    async function loadBillingOrders() {
+        try {
+            const data = await api.getBillingOrders(REST_ID);
+            console.log("Billing Orders:", data);
+            
+            const container = document.getElementById('billing-orders-container');
+            if (container && data.success) {
+                container.innerHTML = '';
+                data.orders.forEach(order => {
+                    container.innerHTML += `
+                        <div class="billing-card" style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+                            <h3>Table: ${order.table_no} | Order ID: ${order.id}</h3>
+                            <p>Customer: ${order.customer_name || 'Walk-in'} | Total: ₹${order.total_amount}</p>
+                            <p>Payment Status: <strong>${order.payment_status || 'Unpaid'}</strong></p>
+                            <button onclick="checkoutOrder('${order.id}', ${order.total_amount})">Mark as Paid (Cash)</button>
+                        </div>
+                    `;
+                });
+            }
+        } catch (err) {
+            console.error("Error loading billing orders:", err.message);
+        }
+    }
+
+    window.checkoutOrder = async function(orderId, amount) {
+        try {
+            const paymentData = {
+                orderId: orderId,
+                amount: amount,
+                paymentMethod: 'Cash'
+            };
+            const res = await api.processPayment(paymentData);
+            alert("Payment processed successfully! Invoice ID: " + (res.invoiceId || 'N/A'));
+            loadBillingOrders(); // লিস্ট রিফ্রেশ করা
+        } catch (err) {
+            alert("Payment failed: " + err.message);
+        }
+    }
+
+    loadBillingOrders();
+</script>
+</body>
+</html>

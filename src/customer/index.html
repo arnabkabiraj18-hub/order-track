@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html class="light" lang="bn">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>OrderTrack - Digital Menu & Tracker</title>
+   
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+   
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#b7122a",
+                        "primary-container": "#db313f",
+                        "on-primary": "#ffffff",
+                        "secondary": "#006c4f",
+                        "surface": "#fcf9f8",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container": "#f0eded",
+                        "surface-container-high": "#eae7e7",
+                        "surface-container-highest": "#e5e2e1",
+                        "on-surface": "#1b1b1b",
+                        "on-surface-variant": "#5b403f",
+                        "outline-variant": "#e4bebc",
+                        "error": "#ba1a1a"
+                    },
+                    fontFamily: {
+                        "display": ["Montserrat", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                        "body": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined' !important;
+            font-size: 20px;
+            line-height: 1;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .icon-fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen antialiased selection:bg-primary/20">
+
+    <!-- 1. WELCOME TABLE SCREEN -->
+    <div id="welcomeScreen" class="fixed inset-0 z-50 bg-surface flex flex-col justify-end p-4 md:items-center md:justify-center">
+        <div id="welcomeBgImage" class="absolute inset-0 z-0 bg-cover bg-center opacity-30 blur-sm transition-all duration-700" style="background-image: url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200');"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/85 to-surface/40 z-0"></div>
+
+        <div class="relative z-10 bg-surface/95 backdrop-blur-md rounded-3xl p-6 shadow-2xl border border-white/40 w-full max-w-md mx-auto text-center space-y-6">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white border border-outline-variant/30 shadow-lg mx-auto overflow-hidden p-1">
+                <img id="welcomeLogoImg" src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200" class="w-full h-full object-cover rounded-xl" alt="Logo">
+            </div>
+           
+            <div>
+                <h2 class="font-display font-extrabold text-2xl text-on-surface mb-1">স্বাগতম! (Welcome)</h2>
+                <p class="text-xs text-on-surface-variant">আপনি <strong id="welcomeTableNo" class="text-primary font-bold">Table 1</strong> এ বসেছেন। ডিজিটাল মেনু দেখে সহজে নিজের টেবিলে অর্ডার দিন।</p>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="enterMenu()" class="w-full py-3.5 bg-primary hover:bg-primary-container text-on-primary font-display font-bold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-98 transition-all">
+                    <span>Start Ordering (মেনু দেখুন)</span>
+                    <span class="material-symbols-outlined text-base">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPLIT TABLE DETECTOR POPUP -->
+    <div id="splitTableSelectorModal" class="fixed inset-0 bg-black/75 z-50 hidden justify-center items-center p-4 backdrop-blur-md animate-in fade-in duration-200">
+        <div class="bg-surface rounded-3xl p-6 max-w-sm w-full border border-surface-container-highest shadow-2xl text-center space-y-4">
+            <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                <span class="material-symbols-outlined text-3xl">call_split</span>
+            </div>
+            <div>
+                <span class="text-[10px] font-bold text-primary uppercase tracking-wider block">Shared Table Detected</span>
+                <h3 class="font-display font-bold text-lg text-on-surface mt-1">Select Your Seat Section</h3>
+                <p class="text-xs text-on-surface-variant mt-1">এই টেবিলটি ভাগ করা আছে। আপনি কোন সাইডে বসেছেন তা সিলেক্ট করুন:</p>
+            </div>
+            <div id="splitButtonsContainer" class="space-y-2.5 pt-1"></div>
+        </div>
+    </div>
+
+    <!-- 2. TOP APP BAR -->
+    <header class="fixed top-0 left-0 w-full z-40 bg-surface/95 backdrop-blur-md border-b border-surface-container-highest shadow-sm">
+        <div class="max-w-[1200px] mx-auto px-4 h-16 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div id="brandLogoBox" class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20 flex-shrink-0">
+                    <span class="material-symbols-outlined text-primary text-2xl">restaurant</span>
+                </div>
+                <div>
+                    <h1 id="restaurantName" class="font-display font-bold text-lg text-primary tracking-tight leading-none">OrderTrack</h1>
+                    <span id="orderModeIndicator" class="text-[10px] font-bold text-secondary">🍽️ Dine-In Menu</span>
+                </div>
+            </div>
+           
+            <div class="flex items-center gap-2">
+                <select class="bg-surface-container-low border border-outline-variant text-on-surface text-xs font-semibold rounded-full px-2.5 py-1.5 outline-none cursor-pointer" onchange="switchAppLanguage(this.value)">
+                    <option value="bn">🇧🇩 বাংলা</option>
+                    <option value="en">🇬🇧 English</option>
+                    <option value="hi">🇮🇳 हिंदी</option>
+                </select>
+
+                <div class="flex items-center gap-1 bg-surface-container-highest px-3 py-1.5 rounded-full">
+                    <span class="material-symbols-outlined text-sm text-on-surface-variant">table_restaurant</span>
+                    <span id="table-display" class="font-display text-xs font-bold text-primary">T-1</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 3. MAIN CONTENT (MENU GRID) -->
+    <main class="max-w-[1200px] mx-auto px-4 pt-20 pb-40 md:grid md:grid-cols-12 md:gap-6">
+        <div class="md:col-span-8 lg:col-span-9 space-y-4">
+           
+            <!-- PARCEL NOTICE BANNER -->
+            <div id="parcelNoticeBanner" class="hidden p-3.5 bg-amber-500 text-white rounded-2xl shadow-sm items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-2xl">takeout_dining</span>
+                    <div>
+                        <h4 class="font-bold text-xs">Parcel / Takeaway Menu Active</h4>
+                        <p class="text-[10px] text-amber-100">এখান থেকে যে খাবারগুলো যোগ করবেন তা বাড়িতে নিয়ে যাওয়ার জন্য বক্সে প্যাক করা হবে।</p>
+                    </div>
+                </div>
+                <button type="button" onclick="switchMenuMode('dinein')" class="px-2.5 py-1 bg-white text-amber-900 font-bold text-[10px] rounded-lg">
+                    Dine-in Menu
+                </button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="relative w-full">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="material-symbols-outlined text-outline text-xl">search</span>
+                </div>
+                <input id="searchInput" onkeyup="searchMenu()" class="block w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl text-sm font-body text-on-surface placeholder:text-outline/70 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm" placeholder="পছন্দের খাবার সার্চ করুন..." type="text"/>
+            </div>
+
+            <!-- Category Filter Chips -->
+            <div id="categoryContainer" class="flex overflow-x-auto hide-scrollbar gap-2 py-1">
+                <button class="category-btn flex-shrink-0 h-9 px-5 rounded-full bg-primary text-on-primary font-body text-xs font-semibold shadow-sm transition-all">সব মেনু</button>
+            </div>
+
+            <!-- Menu Dishes Grid -->
+            <section id="menuListContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2"></section>
+        </div>
+
+        <!-- Desktop Cart Panel -->
+        <div class="hidden md:block md:col-span-4 lg:col-span-3">
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-surface-container-highest shadow-sm sticky top-20 space-y-4">
+                <h3 class="font-display font-bold text-sm text-on-surface border-b border-surface-container-highest pb-2.5">Your Order (Table <span id="desktopTableNo">1</span>)</h3>
+               
+                <div id="desktopCartItems" class="space-y-2 max-h-[300px] overflow-y-auto">
+                    <div class="text-center py-8 text-on-surface-variant font-medium text-xs">
+                        <span class="material-symbols-outlined text-3xl opacity-40 block mb-1">shopping_basket</span>
+                        কার্ট খালি রয়েছে
+                    </div>
+                </div>
+
+                <div id="desktopCartSummary" class="hidden pt-2 border-t border-surface-container-highest space-y-2">
+                    <div class="flex justify-between text-xs text-on-surface-variant">
+                        <span>Subtotal</span>
+                        <span id="desktopSubtotal">₹0</span>
+                    </div>
+                    <div id="desktopTaxRow" class="flex justify-between text-xs text-on-surface-variant">
+                        <span>GST (5%)</span>
+                        <span id="desktopTax">₹0</span>
+                    </div>
+                    <div class="flex justify-between text-sm font-display font-bold text-primary pt-1 border-t border-dashed border-outline-variant">
+                        <span>Total</span>
+                        <span id="desktopTotal">₹0</span>
+                    </div>
+                    <button onclick="openCartModal()" class="w-full py-2.5 bg-primary hover:bg-primary-container text-on-primary rounded-xl font-display font-bold text-xs shadow-md mt-2">
+                        অর্ডার কনফার্ম করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 4. FLOATING RED 'VIEW CART' BAR -->
+    <div id="floatingCartBar" class="hidden fixed bottom-24 left-4 right-4 max-w-[500px] mx-auto z-40">
+        <button onclick="openCartModal()" class="w-full h-12 bg-primary hover:bg-primary-container text-on-primary rounded-xl flex items-center justify-between px-4 shadow-[0px_8px_24px_rgba(183,18,42,0.35)] active:scale-98 transition-transform">
+            <div class="flex items-center gap-2.5">
+                <span id="floatingCartQty" class="bg-white/20 rounded-full w-7 h-7 flex items-center justify-center font-display font-bold text-xs text-on-primary">0</span>
+                <span id="floatingCartTotal" class="font-display font-bold text-sm">₹0</span>
+            </div>
+            <div class="flex items-center gap-1 font-display text-xs font-bold uppercase tracking-wider">
+                View Cart
+                <span class="material-symbols-outlined text-base">chevron_right</span>
+            </div>
+        </button>
+    </div>
+
+    <!-- 5. 5-TAB BOTTOM NAVIGATION BAR -->
+    <nav class="fixed bottom-0 left-0 w-full z-40 flex justify-around items-center px-2 py-2 bg-primary text-on-primary rounded-t-2xl shadow-[0px_-8px_24px_rgba(0,0,0,0.15)] md:hidden">
+        <button onclick="switchMenuMode('dinein')" id="navBtnDinein" class="flex flex-col items-center gap-0.5 text-white px-2 py-1 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-xl">restaurant</span>
+            <span class="font-display text-[10px] font-bold">Dine-In</span>
+        </button>
+
+        <button onclick="switchMenuMode('parcel')" id="navBtnParcel" class="flex flex-col items-center gap-0.5 text-amber-300 hover:text-white px-2 py-1 active:scale-95 transition-all relative">
+            <span class="material-symbols-outlined text-xl">takeout_dining</span>
+            <span class="font-display text-[10px] font-bold">Parcel 🛍️</span>
+        </button>
+
+        <button onclick="openCartModal()" class="flex flex-col items-center gap-0.5 text-white/80 hover:text-white px-2 py-1 active:scale-95 transition-all relative">
+            <span class="material-symbols-outlined text-xl">shopping_cart</span>
+            <span class="font-display text-[10px] font-semibold">Cart</span>
+            <span id="navCartBadge" class="hidden absolute -top-1 right-2 bg-white text-primary text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">0</span>
+        </button>
+
+        <button onclick="openLiveStatusModal()" class="flex flex-col items-center gap-0.5 text-white/80 hover:text-white px-2 py-1 active:scale-95 transition-all relative">
+            <span class="material-symbols-outlined text-xl">receipt_long</span>
+            <span class="font-display text-[10px] font-semibold">Status</span>
+            <span id="navStatusBadge" class="hidden absolute -top-1 right-2 bg-secondary text-white text-[9px] font-bold w-2.5 h-2.5 rounded-full animate-ping"></span>
+        </button>
+
+        <button onclick="callWaiter()" class="flex flex-col items-center gap-0.5 text-white/80 hover:text-white px-2 py-1 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-xl text-amber-300">notifications_active</span>
+            <span class="font-display text-[10px] font-semibold">Waiter</span>
+        </button>
+    </nav>
+
+    <!-- 6. LIVE ORDER STATUS & TIMELINE MODAL -->
+    <div id="liveStatusModalOverlay" class="fixed inset-0 bg-black/60 z-50 hidden flex-col justify-end backdrop-blur-sm">
+        <div class="bg-surface rounded-t-3xl max-w-[600px] w-full mx-auto max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300">
+           
+            <div class="p-4 border-b border-surface-container-highest flex justify-between items-center bg-surface-container-low">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl">restaurant</span>
+                    <h3 id="trackerHeaderBrand" class="font-serif font-bold text-base text-primary">OrderTrack</h3>
+                    <span class="text-xs font-bold bg-surface-container px-2.5 py-0.5 rounded-full text-on-surface">Table <span id="trackerHeaderTable">1</span></span>
+                </div>
+                <button onclick="closeLiveStatusModal()" class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto flex-1 space-y-5">
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm space-y-5">
+                    <h4 class="font-display font-bold text-base text-on-surface">Live Status</h4>
+
+                    <div class="relative pl-2 space-y-6">
+                        <div class="absolute left-6 top-3 bottom-3 w-0.5 bg-surface-container-highest -z-0"></div>
+
+                        <div class="flex items-center gap-4 relative z-10" id="stepAccepted">
+                            <div class="w-9 h-9 rounded-full bg-secondary text-white flex items-center justify-center shadow-md flex-shrink-0">
+                                <span class="material-symbols-outlined text-lg">receipt_long</span>
+                            </div>
+                            <div>
+                                <h5 class="font-display font-bold text-xs text-secondary">Accepted</h5>
+                                <p id="acceptedTimeDisplay" class="text-[11px] text-on-surface-variant font-medium">Just now</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4 relative z-10 opacity-40 transition-all duration-300" id="stepPreparing">
+                            <div class="w-9 h-9 rounded-full bg-surface-container border border-outline-variant text-on-surface flex items-center justify-center flex-shrink-0" id="iconBoxPreparing">
+                                <span class="material-symbols-outlined text-lg">skillet</span>
+                            </div>
+                            <div>
+                                <h5 class="font-display font-bold text-xs text-on-surface">Preparing</h5>
+                                <p class="text-[11px] text-on-surface-variant font-medium">In kitchen</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4 relative z-10 opacity-40 transition-all duration-300" id="stepReady">
+                            <div class="w-9 h-9 rounded-full bg-surface-container border border-outline-variant text-on-surface flex items-center justify-center flex-shrink-0" id="iconBoxReady">
+                                <span class="material-symbols-outlined text-lg">room_service</span>
+                            </div>
+                            <div>
+                                <h5 class="font-display font-bold text-xs text-on-surface">Ready</h5>
+                                <p class="text-[11px] text-on-surface-variant font-medium">Ready for table delivery</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4 relative z-10 opacity-40 transition-all duration-300" id="stepServed">
+                            <div class="w-9 h-9 rounded-full bg-surface-container border border-outline-variant text-on-surface flex items-center justify-center flex-shrink-0" id="iconBoxServed">
+                                <span class="material-symbols-outlined text-lg">done_all</span>
+                            </div>
+                            <div>
+                                <h5 class="font-display font-bold text-xs text-on-surface">Served</h5>
+                                <p class="text-[11px] text-on-surface-variant font-medium">Enjoy your meal!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm space-y-3">
+                    <div class="flex justify-between items-center border-b border-surface-container-highest pb-2.5">
+                        <h4 class="font-display font-bold text-sm text-on-surface">Order Summary</h4>
+                        <span id="trackerItemsBadge" class="bg-surface-container-high text-on-surface-variant text-[11px] font-bold px-2.5 py-0.5 rounded-full">0 Items</span>
+                    </div>
+
+                    <div id="trackerItemsContainer" class="space-y-2.5 text-xs">
+                        <p class="text-center text-on-surface-variant py-4 font-medium">বর্তমানে কোনো রানিং অর্ডার নেই।</p>
+                    </div>
+
+                    <div class="pt-2.5 border-t border-surface-container-highest flex justify-between items-center">
+                        <span class="font-display font-bold text-sm text-on-surface">Total</span>
+                        <span id="trackerTotalPriceDisplay" class="font-display font-extrabold text-base text-primary">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- TABLE-SIDE LIVE UPI QR CODE -->
+                <div id="tablePaymentQrBoxContainer" class="hidden bg-white p-5 rounded-2xl border-2 border-primary/20 shadow-md text-center space-y-3">
+                    <span class="text-xs font-bold text-secondary bg-secondary/10 px-3 py-1 rounded-full inline-block">Scan & Pay from Table</span>
+                    <div class="flex justify-center my-2">
+                        <div id="tableUpiQrBox" class="w-44 h-44 bg-white p-2 border rounded-xl flex items-center justify-center shadow-inner"></div>
+                    </div>
+                    <h3 id="tableQrPayAmount" class="font-display font-extrabold text-2xl text-primary">₹0</h3>
+                    <p class="text-[10px] text-gray-500 font-medium">PhonePe • GPay • Paytm • BHIM</p>
+                </div>
+
+                <div class="space-y-2.5 pt-1">
+                    <button type="button" onclick="closeLiveStatusModal()" class="w-full py-3 rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container font-display font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-98 transition-all">
+                        <span class="material-symbols-outlined text-sm">add</span> + Add more items
+                    </button>
+
+                    <button type="button" id="btnRequestFinalBill" onclick="requestFinalBillToWaiter()" class="hidden w-full py-3.5 rounded-xl bg-primary hover:bg-primary-container text-white font-display font-bold text-xs shadow-md flex items-center justify-center gap-2 active:scale-98 transition-all">
+                        <span class="material-symbols-outlined text-base">receipt_long</span> Request Final Bill (বিল দিন & QR স্ক্যান)
+                    </button>
+
+                    <button type="button" onclick="callWaiter()" class="w-full py-2 text-on-surface-variant hover:text-primary font-bold text-xs flex items-center justify-center gap-1.5 transition-all">
+                        <span class="material-symbols-outlined text-base text-amber-500">notifications_active</span> Call Waiter (ওয়েটার ডাকুন)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. ITEM DETAILS & CUSTOMIZATION MODAL -->
+    <div id="itemDetailModal" class="fixed inset-0 bg-black/60 z-50 hidden flex-col justify-end backdrop-blur-sm">
+        <div class="bg-surface rounded-t-3xl max-w-[600px] w-full mx-auto max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 relative">
+           
+            <div class="absolute top-3 left-0 w-full z-10 flex justify-between items-center px-4">
+                <button onclick="closeItemModal()" class="w-9 h-9 bg-surface/80 backdrop-blur-md rounded-full flex items-center justify-center text-on-surface shadow-md">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+                <div class="bg-surface/80 backdrop-blur-md px-3 py-1 rounded-full shadow-md">
+                    <span class="text-xs font-display font-bold text-primary flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">table_restaurant</span> Table <span id="modalTableNo">1</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto pb-24">
+                <div class="w-full h-56 relative bg-surface-container-low">
+                    <img id="modalItemImg" src="" class="w-full h-full object-cover" alt="Dish image">
+                </div>
+
+                <div class="px-5 py-5 bg-surface rounded-t-3xl -mt-6 relative z-10 space-y-4">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div id="modalDietaryBadge" class="flex items-center gap-1.5 mb-1"></div>
+                            <h2 id="modalItemTitle" class="font-display font-bold text-lg text-on-surface">Item Name</h2>
+                        </div>
+                        <span id="modalItemPrice" class="font-display font-bold text-lg text-primary mt-1">₹0</span>
+                    </div>
+                    <p id="modalItemDesc" class="text-xs text-on-surface-variant leading-relaxed"></p>
+
+                    <div class="h-px bg-surface-container-highest"></div>
+
+                    <!-- Spice Level -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-display font-bold text-xs text-on-surface">Spice Level</h3>
+                            <span class="text-[10px] font-bold text-primary uppercase">Required</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label id="labelSpiceMild" onclick="selectSpiceLevel('Mild')" class="flex items-center justify-center p-2.5 border border-outline-variant rounded-xl cursor-pointer text-xs font-semibold hover:border-primary transition-all">
+                                <input type="radio" name="modalSpice" value="Mild" class="hidden">
+                                <span>Mild</span>
+                            </label>
+                            <label id="labelSpiceMedium" onclick="selectSpiceLevel('Medium')" class="flex items-center justify-center p-2.5 border-2 border-primary bg-primary/5 rounded-xl cursor-pointer text-xs font-bold text-primary transition-all">
+                                <input type="radio" name="modalSpice" value="Medium" checked class="hidden">
+                                <span>Medium</span>
+                            </label>
+                            <label id="labelSpiceSpicy" onclick="selectSpiceLevel('Spicy')" class="flex items-center justify-center p-2.5 border border-outline-variant rounded-xl cursor-pointer text-xs font-semibold hover:border-primary transition-all">
+                                <input type="radio" name="modalSpice" value="Spicy" class="hidden">
+                                <span>Spicy 🔥</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Add-ons -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-display font-bold text-xs text-on-surface">Add-ons</h3>
+                            <span class="text-[10px] text-on-surface-variant">Optional</span>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="flex items-center justify-between p-3 border border-outline-variant rounded-xl cursor-pointer hover:border-primary/50 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="addonExtraButter" value="30" class="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant">
+                                    <span class="font-medium text-on-surface">Extra Butter / Cheese</span>
+                                </div>
+                                <span class="text-on-surface-variant font-bold">+₹30</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Special Notes -->
+                    <div>
+                        <h3 class="font-display font-bold text-xs text-on-surface mb-2">Special Instructions</h3>
+                        <textarea id="modalSpecialNotes" placeholder="E.g., No onion, extra gravy..." class="w-full border border-outline-variant rounded-xl p-3 text-xs bg-surface-bright outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fixed bottom-0 left-0 w-full z-20 bg-surface border-t border-surface-container-highest px-4 py-3">
+                <div class="max-w-[600px] mx-auto flex items-center justify-between gap-3">
+                    <div class="flex items-center border border-outline-variant rounded-xl bg-surface-container-low h-11">
+                        <button onclick="changeModalQty(-1)" class="w-10 h-full flex items-center justify-center text-on-surface font-bold text-sm">-</button>
+                        <span id="modalQtyDisplay" class="font-display font-bold text-xs w-6 text-center">1</span>
+                        <button onclick="changeModalQty(1)" class="w-10 h-full flex items-center justify-center text-primary font-bold text-sm">+</button>
+                    </div>
+                    <button onclick="saveModalToCart()" class="flex-1 bg-primary hover:bg-primary-container text-on-primary h-11 rounded-xl flex items-center justify-between px-4 font-display font-bold text-xs shadow-md active:scale-98 transition-all">
+                        <span>Add Item</span>
+                        <span id="modalTotalBtnPrice">₹0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. CART & BILL SUMMARY MODAL -->
+    <div id="cartModalOverlay" class="fixed inset-0 bg-black/60 z-50 hidden flex-col justify-end backdrop-blur-sm">
+        <div class="bg-surface rounded-t-3xl max-w-[600px] w-full mx-auto max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300">
+           
+            <div class="p-4 border-b border-surface-container-highest flex justify-between items-center bg-surface-container-low">
+                <div>
+                    <h3 class="font-display font-bold text-base text-on-surface">Your Order (Table <span id="cartHeaderTable">1</span>)</h3>
+                    <p class="text-[11px] text-on-surface-variant font-medium"><span id="cartCountHeader">0</span> Items in cart</p>
+                </div>
+                <button onclick="closeCartModal()" class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto flex-1 space-y-4">
+                <div id="cartModalItems" class="space-y-3"></div>
+
+                <div class="space-y-2 pt-2 border-t text-xs">
+                    <input type="text" id="custNameInput" placeholder="আপনার নাম (Customer Name) *" class="w-full px-3.5 py-2.5 border border-outline-variant rounded-xl outline-none bg-surface-bright font-medium">
+                    <input type="tel" id="custPhoneInput" placeholder="মোবাইল নম্বর (10-digit Phone) *" class="w-full px-3.5 py-2.5 border border-outline-variant rounded-xl outline-none bg-surface-bright font-medium">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="font-display font-bold text-xs text-on-surface flex items-center gap-1">
+                        <span class="material-symbols-outlined text-base text-primary">edit_note</span> Special Instructions
+                    </label>
+                    <textarea id="orderSpecialInstruction" placeholder="E.g., serve drinks first, less spicy..." class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl p-3 text-xs font-body focus:ring-1 focus:ring-primary focus:border-primary outline-none resize-none" rows="2"></textarea>
+                </div>
+
+                <!-- Payment Selection -->
+                <div class="bg-surface-container-low rounded-2xl p-3.5 border border-surface-container-highest space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-display font-bold text-xs text-on-surface uppercase tracking-wider">Payment Method:</h4>
+                        <span id="lockedPaymentBadge" class="hidden text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">🔒 Locked to Table Method</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <label id="optCash" onclick="selectPayment('Cash')" class="border-2 border-primary bg-primary/5 rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all">
+                            <span class="material-symbols-outlined text-primary text-xl">payments</span>
+                            <span class="font-display text-xs font-bold text-on-surface">Cash on Table</span>
+                        </label>
+                        <label id="optUPI" onclick="selectPayment('UPI')" class="border-2 border-surface-container-highest bg-surface rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all">
+                            <span class="material-symbols-outlined text-on-surface-variant text-xl">qr_code_scanner</span>
+                            <span class="font-display text-xs font-bold text-on-surface">Pay Online (UPI / Card)</span>
+                        </label>
+                    </div>
+
+                    <div id="directUpiBox" class="hidden pt-2 text-center text-xs text-secondary font-medium">
+                        🔒 Pay securely via GPay, PhonePe, Paytm, Cards or NetBanking. Order will only be sent after payment verification.
+                    </div>
+                </div>
+
+                <!-- Bill Summary -->
+                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-surface-container-highest shadow-sm space-y-2">
+                    <h4 class="font-display font-bold text-xs text-on-surface border-b border-outline-variant pb-2">Bill Summary</h4>
+                    <div class="flex justify-between text-xs text-on-surface-variant">
+                        <span>Subtotal</span>
+                        <span id="billSubtotal">₹0</span>
+                    </div>
+                    <div id="billTaxRow" class="flex justify-between text-xs text-on-surface-variant">
+                        <span>GST (5%)</span>
+                        <span id="billTax">₹0</span>
+                    </div>
+                    <div class="border-t border-dashed border-outline-variant pt-2 flex justify-between items-center font-display font-bold text-on-surface text-base">
+                        <span>Total</span>
+                        <span id="billGrandTotal" class="text-primary">₹0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="p-4 border-t border-surface-container-highest bg-surface-container-low">
+                <button id="btnSubmitFinalOrder" onclick="handlePlaceOrderClick()" class="w-full bg-primary hover:bg-primary-container text-on-primary rounded-xl font-display font-bold h-12 flex items-center justify-between px-5 shadow-lg active:scale-98 transition-all">
+                    <span id="btnFinalTotal" class="font-display font-bold text-base">₹0</span>
+                    <div class="flex items-center gap-1">
+                        <span id="btnFinalText">Place Order</span>
+                        <span class="material-symbols-outlined text-base">arrow_forward</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT & BACKEND SOCKET.IO ENGINE -->
+    <script>
+        const API_BASE_URL = "http://localhost:5000";
+        const RESTAURANT_ID = sessionStorage.getItem('CV_DEVICE_REST_ID') || "REST_001";
+
+        let selectedPaymentMethod = "Cash";
+        let tableLockedPaymentMethod = null;
+        let restaurantBranding = { name: "OrderTrack", upi: "restaurant@okaxis" };
+        let selectedSpiceOption = "Medium";
+        let rawMenuItems = {};
+        let cart = {};
+        let activeMenuMode = 'dinein'; // 'dinein' or 'parcel'
+
+        // 1. STRICT TABLE & DYNAMIC SPLIT DETECTOR
+        const urlParams = new URLSearchParams(window.location.search);
+        let baseTableNumber = urlParams.get('table') || "1";
+
+        const savedBase = sessionStorage.getItem('SCANNED_BASE_TABLE');
+        if (savedBase !== baseTableNumber) {
+            sessionStorage.removeItem('MY_ACTIVE_SUB_TABLE');
+            sessionStorage.setItem('SCANNED_BASE_TABLE', baseTableNumber);
+        }
+
+        let currentTableNumber = sessionStorage.getItem('MY_ACTIVE_SUB_TABLE') || baseTableNumber;
+
+        function updateUITableDisplays(tbl) {
+            currentTableNumber = tbl;
+            document.getElementById('table-display').innerText = "T-" + tbl;
+            document.getElementById('welcomeTableNo').innerText = "Table " + tbl;
+            document.getElementById('desktopTableNo').innerText = tbl;
+            document.getElementById('modalTableNo').innerText = tbl;
+            document.getElementById('cartHeaderTable').innerText = tbl;
+            document.getElementById('trackerHeaderTable').innerText = tbl;
+        }
+        updateUITableDisplays(currentTableNumber);
+
+        // Socket.io connection for real-time customer menu updates
+        const socket = io(API_BASE_URL);
+        socket.on('connect', () => {
+            socket.emit('join_restaurant', RESTAURANT_ID);
+            fetchCustomerData();
+        });
+
+        socket.on('menu_updated', () => { fetchMenuItems(); });
+        socket.on('branding_updated', () => { fetchBranding(); });
+        socket.on('order_status_updated', () => { fetchLiveOrders(); });
+
+        async function fetchCustomerData() {
+            await fetchBranding();
+            await fetchMenuItems();
+            await fetchLiveOrders();
+        }
+
+        async function fetchBranding() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/branding`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const brand = await res.json();
+                    if (brand) {
+                        if (brand.name) {
+                            restaurantBranding.name = brand.name;
+                            document.getElementById('restaurantName').innerText = brand.name;
+                            document.getElementById('trackerHeaderBrand').innerText = brand.name;
+                        }
+                        const logo = brand.logo;
+                        if (logo) {
+                            document.getElementById('brandLogoBox').innerHTML = `<img src="${logo}" class="w-full h-full object-cover" alt="Logo">`;
+                            document.getElementById('welcomeLogoImg').src = logo;
+                            document.getElementById('welcomeBgImage').style.backgroundImage = `url('${logo}')`;
+                        }
+                        if (brand.upi_id) restaurantBranding.upi = brand.upi_id;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function enterMenu() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+        }
+
+        function scrollToMenu() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // SWITCH BETWEEN DINE-IN AND PARCEL TABS
+        function switchMenuMode(mode) {
+            activeMenuMode = mode;
+            const dineinBtn = document.getElementById('navBtnDinein');
+            const parcelBtn = document.getElementById('navBtnParcel');
+            const modeIndicator = document.getElementById('orderModeIndicator');
+            const parcelBanner = document.getElementById('parcelNoticeBanner');
+
+            if (mode === 'parcel') {
+                parcelBanner.classList.remove('hidden');
+                parcelBanner.classList.add('flex');
+                modeIndicator.innerText = "🛍️ Parcel / Takeaway Active";
+                modeIndicator.className = "text-[10px] font-bold text-amber-800";
+               
+                parcelBtn.className = "flex flex-col items-center gap-0.5 text-white bg-amber-600 px-2.5 py-1 rounded-xl shadow-sm";
+                dineinBtn.className = "flex flex-col items-center gap-0.5 text-white/80 hover:text-white px-2 py-1";
+            } else {
+                parcelBanner.classList.add('hidden');
+                parcelBanner.classList.remove('flex');
+                modeIndicator.innerText = "🍽️ Dine-In Menu";
+                modeIndicator.className = "text-[10px] font-bold text-secondary";
+
+                dineinBtn.className = "flex flex-col items-center gap-0.5 text-white bg-black/20 px-2.5 py-1 rounded-xl";
+                parcelBtn.className = "flex flex-col items-center gap-0.5 text-amber-300 hover:text-white px-2 py-1";
+            }
+
+            syncCardsWithCart();
+            scrollToMenu();
+        }
+
+        function isDirectPantryItem(name, category) {
+            const str = (name + " " + (category || "")).toLowerCase();
+            return str.includes("water") || str.includes("coke") || str.includes("drink") ||
+                   str.includes("tissue") || str.includes("glass") || str.includes("ice") ||
+                   str.includes("beverage") || str.includes("cold drink") || str.includes("bisleri");
+        }
+
+        // 3. LIVE MENU RENDERER (FROM PostgreSQL)
+        async function fetchMenuItems() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/menu`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const list = await res.json();
+                    rawMenuItems = {};
+                    list.forEach(item => { rawMenuItems[item.id] = item; });
+                    renderMenuUI(rawMenuItems);
+                }
+            } catch(e) {}
+        }
+
+        function renderMenuUI(menuObj) {
+            const menuContainer = document.getElementById('menuListContainer');
+            const categoriesContainer = document.getElementById('categoryContainer');
+            if (!menuContainer) return;
+           
+            menuContainer.innerHTML = "";
+            const keys = Object.keys(menuObj);
+
+            if (keys.length === 0) {
+                menuContainer.innerHTML = "<div class='col-span-full text-center py-12 text-on-surface-variant font-medium text-xs'>বর্তমানে মেনুতে কোনো খাবার পাওয়া যায়নি।</div>";
+                return;
+            }
+
+            const categoriesSet = new Set(['সব মেনু']);
+
+            keys.forEach((key) => {
+                const item = menuObj[key];
+                if (item.category) categoriesSet.add(item.category);
+
+                if (item.available !== false) {
+                    const isVeg = (item.diet_type || item.type) === 'veg';
+                    const isPantry = item.is_pantry === true || isDirectPantryItem(item.name, item.category);
+
+                    const card = document.createElement('div');
+                    card.className = "bg-surface-container-lowest rounded-2xl p-3.5 flex gap-3 border border-surface-container-highest shadow-sm hover:shadow-md transition-all cursor-pointer";
+                    card.setAttribute('data-category', item.category || '');
+                    card.setAttribute('data-item-name', item.name);
+                   
+                    card.onclick = (e) => {
+                        if (!e.target.closest('.card-btn-container')) {
+                            openItemModal(item);
+                        }
+                    };
+
+                    const cartItemKey = `${item.name}${activeMenuMode === 'parcel' ? ' [Pack 🛍️]' : ''}`;
+                    const currentQty = cart[cartItemKey] ? cart[cartItemKey].qty : 0;
+
+                    card.innerHTML = `
+                        <div class="flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-1.5 mb-1">
+                                    <div class="w-3.5 h-3.5 border ${isVeg ? 'border-secondary' : 'border-primary'} flex items-center justify-center p-[2px] rounded-[3px]">
+                                        <div class="w-full h-full rounded-full ${isVeg ? 'bg-secondary' : 'bg-primary'}"></div>
+                                    </div>
+                                    <h4 class="font-display font-bold text-xs text-on-surface line-clamp-1">${item.name}</h4>
+                                    ${isPantry ? `<span class="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[8px] font-bold rounded">Pantry</span>` : ''}
+                                </div>
+                                <p class="text-[11px] text-on-surface-variant line-clamp-2 leading-relaxed">${item.description || item.desc || ''}</p>
+                            </div>
+                            <div class="flex items-center justify-between mt-3">
+                                <span class="font-display font-bold text-xs text-on-surface">₹${item.price}</span>
+                               
+                                <div class="card-btn-container">
+                                    <button class="add-direct-btn ${currentQty > 0 ? 'hidden' : 'block'} h-7 px-3.5 rounded-lg border-[1.5px] border-primary text-primary font-display font-bold text-[11px] hover:bg-primary/5 active:scale-95 transition-all" onclick="event.stopPropagation(); directAddToCart('${item.name}', ${item.price}, '${item.image_url || item.img || ''}', '${item.diet_type || item.type || 'non-veg'}', '${item.category || ''}')">ADD +</button>
+                                   
+                                    <div class="qty-direct-controls ${currentQty > 0 ? 'flex' : 'hidden'} items-center bg-surface-container-low border border-outline-variant rounded-lg overflow-hidden h-7" onclick="event.stopPropagation()">
+                                        <button class="w-7 h-full bg-primary text-on-primary font-bold text-xs flex items-center justify-center active:bg-primary-container" onclick="event.stopPropagation(); updateDirectQty('${item.name}', ${item.price}, -1)">-</button>
+                                        <span class="card-qty-number px-2 text-xs font-display font-bold text-on-surface">${currentQty > 0 ? currentQty : 1}</span>
+                                        <button class="w-7 h-full bg-primary text-on-primary font-bold text-xs flex items-center justify-center active:bg-primary-container" onclick="event.stopPropagation(); updateDirectQty('${item.name}', ${item.price}, 1)">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-surface-container border border-surface-container-high">
+                            <img src="${item.image_url || item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}" class="w-full h-full object-cover" alt="${item.name}">
+                        </div>
+                    `;
+                    menuContainer.appendChild(card);
+                }
+            });
+
+            if (categoriesContainer) {
+                categoriesContainer.innerHTML = "";
+                categoriesSet.forEach(cat => {
+                    const btn = document.createElement('button');
+                    const isActive = cat === 'সব মেনু';
+                    btn.className = `category-btn flex-shrink-0 h-9 px-4 rounded-full font-body text-xs font-semibold transition-all ${isActive ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`;
+                    btn.innerText = cat;
+                    btn.onclick = function() { filterCategory(cat, this); };
+                    categoriesContainer.appendChild(btn);
+                });
+            }
+        }
+
+        // 4. DIRECT ADD TO CART
+        function directAddToCart(name, price, img, type, category) {
+            const isParcelMode = activeMenuMode === 'parcel';
+            const cartKey = `${name}${isParcelMode ? ' [Pack 🛍️]' : ''}`;
+
+            cart[cartKey] = {
+                name: name,
+                price: price,
+                qty: 1,
+                img: img,
+                type: type || 'non-veg',
+                category: category || '',
+                isPantry: isDirectPantryItem(name, category),
+                isParcel: isParcelMode,
+                spice: 'Standard',
+                note: ''
+            };
+            syncCardsWithCart();
+            renderCart();
+        }
+
+        function updateDirectQty(name, price, change) {
+            const isParcelMode = activeMenuMode === 'parcel';
+            const cartKey = `${name}${isParcelMode ? ' [Pack 🛍️]' : ''}`;
+
+            if (cart[cartKey]) {
+                cart[cartKey].qty += change;
+                if (cart[cartKey].qty <= 0) delete cart[cartKey];
+            } else if (change > 0) {
+                cart[cartKey] = { name: name, price: price, qty: 1, img: '', type: 'non-veg', isPantry: isDirectPantryItem(name), isParcel: isParcelMode, spice: 'Standard', note: '' };
+            }
+            syncCardsWithCart();
+            renderCart();
+        }
+
+        function syncCardsWithCart() {
+            const isParcelMode = activeMenuMode === 'parcel';
+            const cards = document.querySelectorAll('#menuListContainer > div');
+
+            cards.forEach(card => {
+                const itemName = card.getAttribute('data-item-name');
+                const cartKey = `${itemName}${isParcelMode ? ' [Pack 🛍️]' : ''}`;
+               
+                const addBtn = card.querySelector('.add-direct-btn');
+                const qtyBox = card.querySelector('.qty-direct-controls');
+                const qtySpan = card.querySelector('.card-qty-number');
+
+                if (cart[cartKey]) {
+                    if (addBtn) addBtn.classList.add('hidden');
+                    if (qtyBox) {
+                        qtyBox.classList.remove('hidden');
+                        qtyBox.classList.add('flex');
+                    }
+                    if (qtySpan) qtySpan.innerText = cart[cartKey].qty;
+                } else {
+                    if (addBtn) addBtn.classList.remove('hidden');
+                    if (qtyBox) {
+                        qtyBox.classList.add('hidden');
+                        qtyBox.classList.remove('flex');
+                    }
+                }
+            });
+        }
+
+        // 5. ITEM DETAILS MODAL
+        let activeModalItem = null;
+        let activeModalQty = 1;
+
+        function openItemModal(item) {
+            activeModalItem = item;
+            activeModalQty = 1;
+
+            const isVeg = (item.diet_type || item.type) === 'veg';
+            document.getElementById('modalItemImg').src = item.image_url || item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500';
+            document.getElementById('modalItemTitle').innerText = `${item.name} ${activeMenuMode === 'parcel' ? '(Parcel Pack 🛍️)' : ''}`;
+            document.getElementById('modalItemPrice').innerText = '₹' + item.price;
+            document.getElementById('modalItemDesc').innerText = item.description || item.desc || 'Freshly prepared with authentic ingredients and secret spices.';
+           
+            document.getElementById('modalDietaryBadge').innerHTML = `
+                <div class="w-3.5 h-3.5 border ${isVeg ? 'border-secondary' : 'border-primary'} flex items-center justify-center p-[2px] rounded-[3px]">
+                    <div class="w-full h-full rounded-full ${isVeg ? 'bg-secondary' : 'bg-primary'}"></div>
+                </div>
+                <span class="text-[11px] font-bold ${isVeg ? 'text-secondary' : 'text-primary'}">${isVeg ? 'Vegetarian' : 'Non-Veg'}</span>
+            `;
+
+            document.getElementById('modalQtyDisplay').innerText = 1;
+            document.getElementById('modalSpecialNotes').value = "";
+            document.getElementById('addonExtraButter').checked = false;
+           
+            selectSpiceLevel('Medium');
+            updateModalButtonPrice();
+
+            document.getElementById('itemDetailModal').classList.remove('hidden');
+            document.getElementById('itemDetailModal').classList.add('flex');
+        }
+
+        function closeItemModal() {
+            document.getElementById('itemDetailModal').classList.add('hidden');
+            document.getElementById('itemDetailModal').classList.remove('flex');
+        }
+
+        function selectSpiceLevel(level) {
+            selectedSpiceOption = level;
+            const mild = document.getElementById('labelSpiceMild');
+            const medium = document.getElementById('labelSpiceMedium');
+            const spicy = document.getElementById('labelSpiceSpicy');
+
+            const unselectedClass = "flex items-center justify-center p-2.5 border border-outline-variant rounded-xl cursor-pointer text-xs font-semibold hover:border-primary transition-all text-on-surface bg-surface";
+            const selectedClass = "flex items-center justify-center p-2.5 border-2 border-primary bg-primary/5 rounded-xl cursor-pointer text-xs font-bold text-primary transition-all";
+
+            mild.className = unselectedClass;
+            medium.className = unselectedClass;
+            spicy.className = unselectedClass;
+
+            if (level === 'Mild') {
+                mild.className = selectedClass;
+                mild.querySelector('input').checked = true;
+            } else if (level === 'Medium') {
+                medium.className = selectedClass;
+                medium.querySelector('input').checked = true;
+            } else if (level === 'Spicy') {
+                spicy.className = selectedClass;
+                spicy.querySelector('input').checked = true;
+            }
+        }
+
+        function changeModalQty(change) {
+            activeModalQty += change;
+            if (activeModalQty < 1) activeModalQty = 1;
+            document.getElementById('modalQtyDisplay').innerText = activeModalQty;
+            updateModalButtonPrice();
+        }
+
+        function updateModalButtonPrice() {
+            if (!activeModalItem) return;
+            let base = activeModalItem.price;
+            if (document.getElementById('addonExtraButter').checked) base += 30;
+            document.getElementById('modalTotalBtnPrice').innerText = '₹' + (base * activeModalQty);
+        }
+
+        document.getElementById('addonExtraButter').addEventListener('change', updateModalButtonPrice);
+
+        function saveModalToCart() {
+            if (!activeModalItem) return;
+            const extraButter = document.getElementById('addonExtraButter').checked;
+            const note = document.getElementById('modalSpecialNotes').value.trim();
+
+            let unitPrice = activeModalItem.price;
+            if (extraButter) unitPrice += 30;
+
+            const isParcelMode = activeMenuMode === 'parcel';
+            const cartKey = `${activeModalItem.name} (${selectedSpiceOption}${extraButter ? ', +Butter' : ''})${isParcelMode ? ' [Pack 🛍️]' : ''}`;
+
+            if (!cart[cartKey]) {
+                cart[cartKey] = {
+                    name: activeModalItem.name,
+                    price: unitPrice,
+                    qty: activeModalQty,
+                    img: activeModalItem.image_url || activeModalItem.img || '',
+                    type: activeModalItem.diet_type || activeModalItem.type || 'non-veg',
+                    category: activeModalItem.category || '',
+                    isPantry: isDirectPantryItem(activeModalItem.name, activeModalItem.category),
+                    isParcel: isParcelMode,
+                    spice: selectedSpiceOption,
+                    note: note
+                };
+            } else {
+                cart[cartKey].qty += activeModalQty;
+                if (note) cart[cartKey].note = note;
+            }
+
+            closeItemModal();
+            syncCardsWithCart();
+            renderCart();
+        }
+
+        // 6. CART MANAGEMENT
+        function renderCart() {
+            let totalQty = 0;
+            let subtotal = 0;
+
+            const modalContainer = document.getElementById('cartModalItems');
+            const desktopContainer = document.getElementById('desktopCartItems');
+           
+            if (modalContainer) modalContainer.innerHTML = "";
+            if (desktopContainer) desktopContainer.innerHTML = "";
+
+            for (let k in cart) {
+                const item = cart[k];
+                const itemTotal = item.price * item.qty;
+                totalQty += item.qty;
+                subtotal += itemTotal;
+
+                if (modalContainer) {
+                    const row = document.createElement('div');
+                    row.className = "bg-surface-container-lowest rounded-2xl p-3 border border-surface-container-highest flex justify-between items-center shadow-sm";
+                    row.innerHTML = `
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <h4 class="font-display font-bold text-xs text-on-surface">${k}</h4>
+                                ${item.isParcel ? `<span class="px-1.5 py-0.2 bg-amber-100 text-amber-900 border border-amber-300 font-extrabold rounded text-[9px]">Pack 🛍️</span>` : ''}
+                            </div>
+                            <p class="text-[11px] text-on-surface-variant font-medium">₹${item.price} × ${item.qty} = <span class="text-primary font-bold">₹${itemTotal}</span></p>
+                        </div>
+                        <div class="flex items-center gap-2 bg-surface-container-low p-1 rounded-xl border border-outline-variant">
+                            <button onclick="adjustQty('${k}', -1)" class="w-6 h-6 rounded-lg bg-surface border border-outline-variant text-on-surface font-bold text-xs flex items-center justify-center active:scale-90">-</button>
+                            <span class="font-display font-bold text-xs text-on-surface min-w-[16px] text-center">${item.qty}</span>
+                            <button onclick="adjustQty('${k}', 1)" class="w-6 h-6 rounded-lg bg-primary text-on-primary font-bold text-xs flex items-center justify-center active:scale-90">+</button>
+                        </div>
+                    `;
+                    modalContainer.appendChild(row);
+                }
+
+                if (desktopContainer) {
+                    const dRow = document.createElement('div');
+                    dRow.className = "flex justify-between items-center py-1.5 border-b border-surface-container-highest text-xs";
+                    dRow.innerHTML = `
+                        <div class="truncate max-w-[120px]">
+                            <p class="font-bold text-on-surface truncate">${k}</p>
+                            <span class="text-[10px] text-on-surface-variant">₹${item.price} × ${item.qty}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="adjustQty('${k}', -1)" class="w-5 h-5 bg-surface-container rounded text-xs font-bold">-</button>
+                            <span class="font-bold">${item.qty}</span>
+                            <button onclick="adjustQty('${k}', 1)" class="w-5 h-5 bg-primary text-white rounded text-xs font-bold">+</button>
+                        </div>
+                    `;
+                    desktopContainer.appendChild(dRow);
+                }
+            }
+
+            const tax = Math.round(subtotal * 0.05);
+            const grandTotal = subtotal + tax;
+
+            const fBar = document.getElementById('floatingCartBar');
+            const navBadge = document.getElementById('navCartBadge');
+
+            if (totalQty > 0) {
+                fBar.classList.remove('hidden');
+                document.getElementById('floatingCartQty').innerText = totalQty;
+                document.getElementById('floatingCartTotal').innerText = '₹' + grandTotal;
+               
+                navBadge.classList.remove('hidden');
+                navBadge.innerText = totalQty;
+
+                document.getElementById('desktopCartSummary').classList.remove('hidden');
+                document.getElementById('desktopSubtotal').innerText = '₹' + subtotal;
+                document.getElementById('desktopTax').innerText = '₹' + tax;
+                document.getElementById('desktopTotal').innerText = '₹' + grandTotal;
+            } else {
+                fBar.classList.add('hidden');
+                navBadge.classList.add('hidden');
+                document.getElementById('desktopCartSummary').classList.add('hidden');
+                if (desktopContainer) {
+                    desktopContainer.innerHTML = `<div class="text-center py-8 text-on-surface-variant font-medium text-xs"><span class="material-symbols-outlined text-3xl opacity-40 block mb-1">shopping_basket</span>কার্ট খালি রয়েছে</div>`;
+                }
+                closeCartModal();
+            }
+
+            document.getElementById('cartCountHeader').innerText = totalQty;
+            document.getElementById('billSubtotal').innerText = '₹' + subtotal;
+            document.getElementById('billTax').innerText = '₹' + tax;
+            document.getElementById('billGrandTotal').innerText = '₹' + grandTotal;
+            document.getElementById('btnFinalTotal').innerText = '₹' + grandTotal;
+        }
+
+        function adjustQty(k, change) {
+            if (cart[k]) {
+                cart[k].qty += change;
+                if (cart[k].qty <= 0) delete cart[k];
+                syncCardsWithCart();
+                renderCart();
+            }
+        }
+
+        function openCartModal() {
+            if (Object.keys(cart).length === 0) {
+                alert("⚠️ আপনার কার্ট খালি! মেনু থেকে খাবার সিলেক্ট করুন।");
+                return;
+            }
+            renderCart();
+            applyTablePaymentLock();
+            document.getElementById('cartModalOverlay').classList.remove('hidden');
+            document.getElementById('cartModalOverlay').classList.add('flex');
+        }
+
+        function closeCartModal() {
+            document.getElementById('cartModalOverlay').classList.add('hidden');
+            document.getElementById('cartModalOverlay').classList.remove('flex');
+        }
+
+        function applyTablePaymentLock() {
+            const optCash = document.getElementById('optCash');
+            const optUPI = document.getElementById('optUPI');
+            const lockedBadge = document.getElementById('lockedPaymentBadge');
+
+            if (tableLockedPaymentMethod) {
+                lockedBadge.classList.remove('hidden');
+                if (tableLockedPaymentMethod === 'Cash') {
+                    selectPayment('Cash');
+                    optUPI.classList.add('opacity-30', 'pointer-events-none');
+                    optCash.classList.remove('opacity-30', 'pointer-events-none');
+                } else {
+                    selectPayment('UPI');
+                    optCash.classList.add('opacity-30', 'pointer-events-none');
+                    optUPI.classList.remove('opacity-30', 'pointer-events-none');
+                }
+            } else {
+                lockedBadge.classList.add('hidden');
+                optCash.classList.remove('opacity-30', 'pointer-events-none');
+                optUPI.classList.remove('opacity-30', 'pointer-events-none');
+            }
+        }
+
+        function selectPayment(type) {
+            if (tableLockedPaymentMethod && tableLockedPaymentMethod !== type) return;
+
+            selectedPaymentMethod = type;
+            const optCash = document.getElementById('optCash');
+            const optUPI = document.getElementById('optUPI');
+            const directUpiBox = document.getElementById('directUpiBox');
+            const btnText = document.getElementById('btnFinalText');
+
+            if (type === 'Cash') {
+                optCash.className = "border-2 border-primary bg-primary/5 rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all";
+                optUPI.className = "border-2 border-surface-container-highest bg-surface rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all";
+                directUpiBox.classList.add('hidden');
+                btnText.innerText = "Place Order (Cash)";
+            } else {
+                optUPI.className = "border-2 border-primary bg-primary/5 rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all";
+                optCash.className = "border-2 border-surface-container-highest bg-surface rounded-xl p-3 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all";
+                directUpiBox.classList.remove('hidden');
+                btnText.innerText = "Pay Online & Place Order";
+            }
+        }
+
+        // 8. ORDER SUBMISSION (API CONNECTED)
+        function handlePlaceOrderClick() {
+            if (Object.keys(cart).length === 0) {
+                alert("⚠️ আপনার কার্ট খালি!");
+                return;
+            }
+
+            const custName = document.getElementById('custNameInput').value.trim() || "Guest";
+            const custPhone = document.getElementById('custPhoneInput').value.trim() || "N/A";
+
+            let totalBill = 0;
+            for (let k in cart) totalBill += cart[k].price * cart[k].qty;
+            totalBill += Math.round(totalBill * 0.05);
+
+            if (selectedPaymentMethod === 'Cash') {
+                executeOrderSubmission(custName, custPhone, 'Cash', 'Pending (Cash on Table)', 'N/A');
+            } else {
+                launchRazorpayPaymentGateway(totalBill, custName, custPhone);
+            }
+        }
+
+        function launchRazorpayPaymentGateway(amountInINR, name, phone) {
+            const options = {
+                "key": "rzp_test_YourKeyHere",
+                "amount": amountInINR * 100,
+                "currency": "INR",
+                "name": restaurantBranding.name || "OrderTrack",
+                "description": `Food Order - Table ${currentTableNumber}`,
+                "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100",
+                "handler": function (response) {
+                    const paymentId = response.razorpay_payment_id || "PAY_" + Date.now();
+                    executeOrderSubmission(name, phone, 'UPI / Online', 'Paid (Verified Online)', paymentId);
+                },
+                "prefill": { "name": name, "contact": phone },
+                "theme": { "color": "#b7122a" },
+                "modal": {
+                    "ondismiss": function() {
+                        alert("❌ Payment Cancelled! পেমেন্ট সম্পূর্ণ না হওয়ায় কোনো অর্ডার পাঠানো হয়নি।");
+                    }
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                alert("❌ Payment Failed! ব্যাংক থেকে পেমেন্ট রিজেক্ট হয়েছে।");
+            });
+            rzp.open();
+        }
+
+        async function executeOrderSubmission(name, phone, method, payStatus, transId) {
+            const specialNotes = document.getElementById('orderSpecialInstruction').value.trim();
+
+            for (let k in cart) {
+                const item = cart[k];
+                const isPantry = item.isPantry || isDirectPantryItem(item.name, item.category);
+
+                const payload = {
+                    restaurant_id: RESTAURANT_ID,
+                    table_no: currentTableNumber,
+                    item_name: item.name,
+                    qty: item.qty,
+                    price: item.price * item.qty,
+                    is_pantry: isPantry,
+                    status: "Pending",
+                    notes: specialNotes || item.note || '',
+                    customer_name: name,
+                    customer_phone: phone,
+                    payment_mode: method
+                };
+
+                try {
+                    await fetch(`${API_BASE_URL}/api/orders`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
+                        body: JSON.stringify(payload)
+                    });
+                } catch(e) {}
+            }
+
+            alert("🎉 ধন্যবাদ! আপনার অর্ডারটি নিশ্চিত হয়েছে এবং কিচেনে পাঠানো হয়েছে।");
+            cart = {};
+            syncCardsWithCart();
+            closeCartModal();
+            renderCart();
+            openLiveStatusModal();
+        }
+
+        // 9. LIVE ORDER STATUS
+        async function fetchLiveOrders() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/orders?table=${currentTableNumber}&status=active`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+                if (res.ok) {
+                    const list = await res.json();
+                    let totalTableBill = 0;
+                    let detectedMethod = null;
+
+                    list.forEach(o => {
+                        totalTableBill += parseFloat(o.price || 0);
+                        if (!detectedMethod && o.payment_mode) {
+                            detectedMethod = o.payment_mode.toLowerCase().includes('cash') ? 'Cash' : 'UPI';
+                        }
+                    });
+
+                    tableLockedPaymentMethod = detectedMethod;
+                    const statusBadge = document.getElementById('navStatusBadge');
+
+                    if (list.length > 0) {
+                        statusBadge.classList.remove('hidden');
+                        renderLiveOrderTimeline(list, totalTableBill);
+                    } else {
+                        statusBadge.classList.add('hidden');
+                        document.getElementById('trackerItemsContainer').innerHTML = "<p class='text-center text-on-surface-variant py-4 font-medium'>বর্তমানে কোনো রানিং অর্ডার নেই।</p>";
+                        document.getElementById('trackerItemsBadge').innerText = "0 Items";
+                        document.getElementById('trackerTotalPriceDisplay').innerText = "₹0.00";
+                        document.getElementById('btnRequestFinalBill').classList.add('hidden');
+                        document.getElementById('tablePaymentQrBoxContainer').classList.add('hidden');
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function openLiveStatusModal() {
+            document.getElementById('liveStatusModalOverlay').classList.remove('hidden');
+            document.getElementById('liveStatusModalOverlay').classList.add('flex');
+        }
+
+        function closeLiveStatusModal() {
+            document.getElementById('liveStatusModalOverlay').classList.add('hidden');
+            document.getElementById('liveStatusModalOverlay').classList.remove('flex');
+        }
+
+        function renderLiveOrderTimeline(items, totalBill) {
+            const container = document.getElementById('trackerItemsContainer');
+            container.innerHTML = "";
+            document.getElementById('trackerItemsBadge').innerText = `${items.length} Items`;
+           
+            const tax = Math.round(totalBill * 0.05);
+            const finalPayable = totalBill + tax;
+            document.getElementById('trackerTotalPriceDisplay').innerText = `₹${finalPayable}.00`;
+
+            items.forEach(i => {
+                const isVeg = (i.diet_type || i.type || '').toLowerCase() === 'veg';
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="w-3.5 h-3.5 border ${isVeg ? 'border-secondary' : 'border-primary'} flex items-center justify-center p-[1px] rounded-[2px] flex-shrink-0">
+                            <div class="w-full h-full rounded-full ${isVeg ? 'bg-secondary' : 'bg-primary'}"></div>
+                        </div>
+                        <span class="font-bold text-on-surface">${i.qty}x ${i.item_name}</span>
+                    </div>
+                    <span class="font-bold text-on-surface-variant">${i.qty}</span>
+                `;
+                container.appendChild(row);
+            });
+
+            const allServed = items.every(i => i.status === 'Served');
+            const billBtn = document.getElementById('btnRequestFinalBill');
+
+            if (allServed) {
+                document.getElementById('stepServed').classList.remove('opacity-40');
+                billBtn.classList.remove('hidden');
+            } else {
+                document.getElementById('stepServed').classList.add('opacity-40');
+                billBtn.classList.add('hidden');
+            }
+        }
+
+        function requestFinalBillToWaiter() {
+            alert("🧾 বিলের অনুরোধ স্টাফদের কাছে পাঠানো হয়েছে!");
+        }
+
+        function openLiveStatusModal() {
+            document.getElementById('liveStatusModalOverlay').classList.remove('hidden');
+            document.getElementById('liveStatusModalOverlay').classList.add('flex');
+        }
+
+        function closeLiveStatusModal() {
+            document.getElementById('liveStatusModalOverlay').classList.add('hidden');
+            document.getElementById('liveStatusModalOverlay').classList.remove('flex');
+        }
+
+        // 11. SEARCH & CATEGORY FILTER
+        function searchMenu() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('#menuListContainer > div');
+            cards.forEach(c => {
+                const title = c.querySelector('h4')?.innerText.toLowerCase() || '';
+                c.style.display = title.includes(input) ? 'flex' : 'none';
+            });
+        }
+
+        function filterCategory(cat, btn) {
+            document.querySelectorAll('.category-btn').forEach(b => {
+                b.className = "category-btn flex-shrink-0 h-9 px-4 rounded-full font-body text-xs font-semibold bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-all";
+            });
+            if (btn) btn.className = "category-btn flex-shrink-0 h-9 px-4 rounded-full font-body text-xs font-semibold bg-primary text-on-primary shadow-sm transition-all";
+
+            const cards = document.querySelectorAll('#menuListContainer > div');
+            cards.forEach(c => {
+                const cardCat = c.getAttribute('data-category');
+                c.style.display = (cat === 'সব মেনু' || cardCat === cat) ? 'flex' : 'none';
+            });
+        }
+
+        function switchAppLanguage(lang) {
+            const map = {
+                bn: "পছন্দের খাবার সার্চ করুন...",
+                en: "Search favorite dishes...",
+                hi: "पसंदीदा व्यंजन खोजें..."
+            };
+            document.getElementById('searchInput').placeholder = map[lang] || map.bn;
+        }
+
+        function callWaiter() {
+            alert("🔔 ওয়েটারকে কল করা হয়েছে! শিঘ্রই আসছেন।");
+        }
+    </script>
+    <script type="module">
+    import { api } from '../api.js';
+
+    // তোমার আসল রেস্টুরেন্ট আইডি এখানে বসাবে
+    const REST_ID = 'REST_তোমার_আসল_আইডি_এখানে_দাও';
+
+    // মেনু লোড করার জন্য এই ফাংশনটি তোমার কোডের সাথে ইন্টিগ্রেট করে নিতে পারো
+    async function fetchMenuExample() {
+        try {
+            const data = await api.getMenu(REST_ID);
+            console.log("Fetched Menu:", data);
+            // এখানে তোমার নিজের ডিজাইনের সাথে ডাটাগুলো লুপ চালিয়ে বসিয়ে নিও
+        } catch (err) {
+            console.error("Menu load error:", err.message);
+        }
+    }
+
+    // অর্ডার করার জন্য এই ফাংশনটি ব্যবহার করতে পারো
+    window.placeCustomerOrder = async function(orderPayload) {
+        try {
+            const res = await api.placeOrder(orderPayload);
+            console.log("Order Response:", res);
+            alert("Order placed successfully!");
+        } catch (err) {
+            alert("Failed: " + err.message);
+        }
+    }
+
+    fetchMenuExample();
+</script>
+</body>
+</html>

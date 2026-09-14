@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>OrderTrack Super Admin - SaaS Master Console</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#b7122a",
+                        "primary-hover": "#8e0e20",
+                        "secondary": "#006c4f",
+                        "surface": "#f8f9fa",
+                        "dark-slate": "#0f172a"
+                    },
+                    fontFamily: {
+                        "display": ["Montserrat", "sans-serif"],
+                        "body": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-size: 20px; vertical-align: middle; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-surface text-gray-900 font-body min-h-screen antialiased select-none">
+
+    <!-- ================= 1. SECRET MASTER GATEWAY ================= -->
+    <div id="masterAuthOverlay" class="fixed inset-0 z-50 bg-dark-slate flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5 text-center border border-gray-100">
+            <div class="w-14 h-14 rounded-2xl bg-red-50 text-primary flex items-center justify-center mx-auto">
+                <span class="material-symbols-outlined text-3xl">admin_panel_settings</span>
+            </div>
+            <div>
+                <h2 class="font-display font-extrabold text-xl text-gray-900">OrderTrack Headquarters</h2>
+                <p class="text-xs text-gray-500 mt-1">Platform Super Owner Console</p>
+            </div>
+            <div class="space-y-3">
+                <input type="password" id="ownerPasscode" placeholder="Master Security Passcode..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-center outline-none focus:border-primary focus:bg-white transition-all">
+                <button type="button" onclick="verifyOwnerPasscode()" class="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-xs shadow-md transition-all">
+                    Unlock SaaS Console
+                </button>
+            </div>
+            <p id="authErrorMsg" class="hidden text-xs text-red-600 font-bold">ভুল পাসকোড! অ্যাক্সেস প্রত্যাখ্যাত।</p>
+        </div>
+    </div>
+
+    <!-- ================= 2. MAIN SAAS MASTER CONSOLE ================= -->
+    <div id="masterDashboard" class="hidden min-h-screen flex flex-col">
+        
+        <!-- TOP APP BAR -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-30 px-6 py-4 flex justify-between items-center shadow-xs">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold shadow-sm">
+                    <span class="material-symbols-outlined text-2xl">hub</span>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-lg text-primary leading-tight">OrderTrack Cloud Control</h1>
+                    <p class="text-[11px] text-gray-500 font-medium">Multi-Tenant SaaS Management & CMS</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="switchTab('analytics')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all" data-target="analyticsTab">
+                    Overview
+                </button>
+                <button onclick="switchTab('clients')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="clientsTab">
+                    Subscribers (<span id="tabClientCount">0</span>)
+                </button>
+                <button onclick="switchTab('plans')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="plansTab">
+                    Plans & Bank
+                </button>
+                <button onclick="switchTab('websiteCms')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="websiteCmsTab">
+                    Landing CMS
+                </button>
+                <button onclick="switchTab('tickets')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="ticketsTab">
+                    Helpdesk (<span id="tabTicketCount">0</span>)
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD BODY CONTAINER -->
+        <main class="max-w-7xl mx-auto w-full p-6 space-y-6 flex-1">
+            
+            <!-- TAB 1: ANALYTICS & OVERVIEW -->
+            <section id="analyticsTab" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-gray-500">
+                            <span class="text-[11px] font-bold uppercase tracking-wider">TOTAL CLIENTS</span>
+                            <span class="material-symbols-outlined text-primary">store</span>
+                        </div>
+                        <span id="statTotalClients" class="font-display font-extrabold text-3xl text-gray-900">0</span>
+                        <span class="text-[10px] text-gray-400">Total Registered Restaurants</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-gray-500">
+                            <span class="text-[11px] font-bold uppercase tracking-wider">ACTIVE SUBSCRIPTIONS</span>
+                            <span class="material-symbols-outlined text-emerald-600">verified</span>
+                        </div>
+                        <span id="statActiveSubs" class="font-display font-extrabold text-3xl text-emerald-600">0</span>
+                        <span class="text-[10px] text-gray-400">Paying & Active Users</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-gray-500">
+                            <span class="text-[11px] font-bold uppercase tracking-wider">FREE TRIAL USERS</span>
+                            <span class="material-symbols-outlined text-blue-600">hourglass_top</span>
+                        </div>
+                        <span id="statFreeTrial" class="font-display font-extrabold text-3xl text-blue-600">0</span>
+                        <span class="text-[10px] text-gray-400">14-Day Trial Evaluators</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-gray-500">
+                            <span class="text-[11px] font-bold uppercase tracking-wider">PAYMENT FAILED</span>
+                            <span class="material-symbols-outlined text-red-600">error</span>
+                        </div>
+                        <span id="statPaymentFailed" class="font-display font-extrabold text-3xl text-red-600">0</span>
+                        <span class="text-[10px] text-gray-400">Overdue / Action Needed</span>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-gray-500">
+                            <span class="text-[11px] font-bold uppercase tracking-wider">TOTAL REVENUE</span>
+                            <span class="material-symbols-outlined text-purple-600">payments</span>
+                        </div>
+                        <span id="statTotalRevenue" class="font-display font-extrabold text-3xl text-purple-700">₹0</span>
+                        <span class="text-[10px] text-gray-400">Subscription Earnings</span>
+                    </div>
+                </div>
+
+                <!-- URGENT RENEWALS & ALERTS -->
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-display font-bold text-base text-gray-900">Urgent Renewal Actions & WhatsApp Alerts</h3>
+                        <span class="text-xs text-gray-400">মেয়াদ শেষ হতে চলা বা পেমেন্ট ফেল হওয়া রেস্তোরাঁ</span>
+                    </div>
+                    <div id="urgentRenewalList" class="space-y-2.5 text-xs">
+                        <p class="text-gray-400 py-4 text-center">বর্তমানে কোনো জরুরি রিনিউয়াল বাকি নেই।</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SUBSCRIBERS / RESTAURANT CLIENT MANAGER -->
+            <section id="clientsTab" class="hidden space-y-4">
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                        <div>
+                            <h3 class="font-display font-bold text-base text-gray-900">Subscribed Restaurant Directory</h3>
+                            <p class="text-xs text-gray-500">সমস্ত রেস্তোরাঁর ডাটা, সাবস্ক্রিপশন প্ল্যান, পেমেন্ট স্ট্যাটাস ও রিনিউয়াল</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="clientSearchInput" onkeyup="filterClients()" placeholder="Search by name, owner, phone..." class="px-4 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:border-primary w-64">
+                            <button onclick="openNewClientModal()" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
+                                <span class="material-symbols-outlined text-sm">add_business</span> Add Client
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 uppercase text-[10px] text-gray-500 border-b border-gray-200">
+                                <tr>
+                                    <th class="py-3 px-4">Restaurant / Outlet</th>
+                                    <th class="py-3 px-4">Owner Info</th>
+                                    <th class="py-3 px-4">Current Plan</th>
+                                    <th class="py-3 px-4">Expiry Date</th>
+                                    <th class="py-3 px-4">Status & Payment</th>
+                                    <th class="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsTableBody" class="divide-y divide-gray-100 font-medium"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: PLANS & BANK SETUP -->
+            <section id="plansTab" class="hidden space-y-6">
+                <!-- BANK & UPI ACCOUNT GATEWAY CONFIG -->
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2.5 border-b pb-3">
+                        <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                            <span class="material-symbols-outlined">account_balance</span>
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-sm text-gray-900">Platform Subscription Payout Bank & UPI</h3>
+                            <p class="text-[11px] text-gray-500">গ্রাহকের সাবস্ক্রিপশন ফি সরাসরি এই ব্যাংক অ্যাকাউন্টে বা ইউপিআই-তে জমা হবে</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Super Admin UPI ID (for QR):</label>
+                            <input type="text" id="cfgAdminUpi" placeholder="yourcompany@okaxis" class="w-full px-3 py-2 border rounded-xl outline-none font-bold text-primary">
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Account Holder Name:</label>
+                            <input type="text" id="cfgAdminAccountName" placeholder="OrderTrack Technologies" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Bank Account Number:</label>
+                            <input type="text" id="cfgAdminAccountNo" placeholder="9876543210123" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Bank IFSC Code:</label>
+                            <input type="text" id="cfgAdminIfsc" placeholder="HDFC0001234" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Razorpay Key ID (Online Gateway):</label>
+                            <input type="text" id="cfgAdminRzpKey" placeholder="rzp_live_xxxxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Platform Currency:</label>
+                            <input type="text" id="cfgAdminCurrency" value="INR (₹)" disabled class="w-full px-3 py-2 border rounded-xl outline-none bg-gray-50 font-bold">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC PLANS & FEATURE TIERS -->
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2.5 border-b pb-3">
+                        <div class="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold">
+                            <span class="material-symbols-outlined">loyalty</span>
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-sm text-gray-900">Subscription Packages & Pricing Setup (হোমপেজে লাইভ সিঙ্ক হবে)</h3>
+                            <p class="text-[11px] text-gray-500">কোন প্ল্যানের দাম কত হবে এবং কী কী ফিচার অন্তর্ভুক্ত থাকবে তা এখান থেকে নিয়ন্ত্রণ করুন</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                        <!-- Starter Plan -->
+                        <div class="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
+                            <span class="font-extrabold text-gray-600 uppercase text-[10px] tracking-wider block">Package Tier 1</span>
+                            <input type="text" id="p1Name" value="Starter" class="w-full px-3 py-2 border rounded-xl font-bold bg-white outline-none">
+                            <input type="text" id="p1Price" value="1,999" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none" placeholder="1999">
+                            <label class="block font-bold text-gray-600 text-[10px]">Features (Comma separated or new line):</label>
+                            <textarea id="p1Features" rows="4" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Digital QR Standees, Up to 50 Menu Items, Daily Revenue Reports</textarea>
+                        </div>
+
+                        <!-- Pro Plan -->
+                        <div class="p-5 rounded-2xl bg-red-50/50 border-2 border-primary/40 space-y-3 relative">
+                            <span class="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-white text-[9px] font-bold">Most Popular</span>
+                            <span class="font-extrabold text-primary uppercase text-[10px] tracking-wider block">Package Tier 2</span>
+                            <input type="text" id="p2Name" value="Professional" class="w-full px-3 py-2 border rounded-xl font-bold bg-white outline-none">
+                            <input type="text" id="p2Price" value="4,999" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none" placeholder="4999">
+                            <label class="block font-bold text-gray-600 text-[10px]">Features:</label>
+                            <textarea id="p2Features" rows="4" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Unlimited Menu & Modifiers, 360° Floor Heatmap Radar, 15 Waiter + 4 KDS Terminals, 24/7 Priority Emergency Support</textarea>
+                        </div>
+
+                        <!-- Enterprise Plan -->
+                        <div class="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
+                            <span class="font-extrabold text-gray-600 uppercase text-[10px] tracking-wider block">Package Tier 3</span>
+                            <input type="text" id="p3Name" value="Enterprise" class="w-full px-3 py-2 border rounded-xl font-bold bg-white outline-none">
+                            <input type="text" id="p3Price" value="Custom" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none" placeholder="Custom">
+                            <label class="block font-bold text-gray-600 text-[10px]">Features:</label>
+                            <textarea id="p3Features" rows="4" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Multi-Branch Central Ledger, Custom ERP & Tally Bridge, Dedicated Operations Manager</textarea>
+                        </div>
+                    </div>
+
+                    <div class="text-right pt-2">
+                        <button onclick="savePlansAndBank()" class="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold shadow-md transition-all">
+                            Save & Sync Plans to Homepage
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: LANDING CMS & WEBSITE BRANDING -->
+            <section id="websiteCmsTab" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2.5 border-b pb-3">
+                        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                            <span class="material-symbols-outlined">palette</span>
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-sm text-gray-900">OrderTrack Website Identity & Front CMS</h3>
+                            <p class="text-[11px] text-gray-500">আপনার মূল হোমপেজের লোগো, ব্র্যান্ড নেম, অ্যাবাউট আস, প্রাইভেসি ও টার্মস নিয়ন্ত্রণ</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Website Brand Name (লোগো ও নাম):</label>
+                            <input type="text" id="cfgWebBrandName" value="OrderTrack" class="w-full px-3 py-2 border rounded-xl outline-none font-bold">
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700 block mb-1">Support Phone (কন্টাক্ট হেল্পলাইন):</label>
+                            <input type="text" id="cfgWebSupportPhone" value="+91 98765 43210" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="font-bold text-gray-700 block mb-1">About Us Content (অ্যাবাউট আস মডাল):</label>
+                            <textarea id="cfgWebAbout" rows="4" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">OrderTrack is an all-in-one culinary operations management suite built specifically for high-speed restaurants, bistros, and cloud kitchens.</textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="font-bold text-gray-700 block mb-1">Privacy Policy Content (প্রাইভেসি পলিসি মডাল):</label>
+                            <textarea id="cfgWebPrivacy" rows="4" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">OrderTrack guarantees complete confidentiality of your restaurant's billing and financial operations. Isolated data and SHA-256 hashed passwords.</textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="font-bold text-gray-700 block mb-1">Terms of Service Content (টার্মস অব সার্ভিস মডাল):</label>
+                            <textarea id="cfgWebTerms" rows="4" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">Usage agreement for authorized restaurant owners and floor staff. 99.9% cloud synchronization reliability during standard dining rush hours.</textarea>
+                        </div>
+                    </div>
+
+                    <div class="text-right pt-2">
+                        <button onclick="saveWebsiteCms()" class="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold shadow-md transition-all">
+                            Publish Website CMS & Modals
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: HELPDESK & SUPPORT TICKETS -->
+            <section id="ticketsTab" class="hidden space-y-4">
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-display font-bold text-base text-gray-900">Client Support & Escalation Desk</h3>
+                            <p class="text-xs text-gray-500">রেস্তোরাঁ মালিকদের ডাটাবেজ সমস্যা, প্ল্যান বা পেমেন্ট হেল্প রিকুয়েস্ট হ্যান্ডেল করার জায়গা</p>
+                        </div>
+                    </div>
+
+                    <div id="ticketsListContainer" class="space-y-3 text-xs">
+                        <div class="p-8 text-center text-gray-400 font-medium">কোনো পেন্ডিং সাপোর্ট টিকিট নেই। সমস্ত সিস্টেম সক্রিয়।</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ================= MODAL: ADD / EDIT RESTAURANT SUBSCRIBER ================= -->
+    <div id="clientModal" class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-display font-bold text-sm text-gray-900">Subscriber Restaurant Setup</h3>
+                <button onclick="closeClientModal()"><span class="material-symbols-outlined text-sm">close</span></button>
+            </div>
+
+            <div class="space-y-3">
+                <input type="hidden" id="editClientKey">
+                <div>
+                    <label class="font-bold block mb-1">Restaurant / Outlet Name *:</label>
+                    <input type="text" id="mOutletName" placeholder="e.g., Royal Spice Dine" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="font-bold block mb-1">Owner Name *:</label>
+                        <input type="text" id="mOwnerName" placeholder="Rahul Seal" class="w-full px-3.5 py-2 border rounded-xl outline-none">
+                    </div>
+                    <div>
+                        <label class="font-bold block mb-1">Owner Mobile *:</label>
+                        <input type="tel" id="mOwnerPhone" placeholder="9876543210" class="w-full px-3.5 py-2 border rounded-xl outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="font-bold block mb-1">Assigned Plan:</label>
+                        <select id="mAssignedPlan" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
+                            <option value="Free Trial">Free Trial (14 Days)</option>
+                            <option value="Starter">Starter</option>
+                            <option value="Professional" selected>Professional</option>
+                            <option value="Enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="font-bold block mb-1">Status & Payment:</label>
+                        <select id="mSubStatus" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
+                            <option value="Active">Active (Paid)</option>
+                            <option value="Expiring">Expiring Soon</option>
+                            <option value="Payment Failed">Payment Failed / Overdue</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="font-bold block mb-1">Expiry Date (YYYY-MM-DD):</label>
+                    <input type="date" id="mExpiryDate" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
+                </div>
+                <div>
+                    <label class="font-bold block mb-1">Special Internal Admin Note (ত্রুটি বা ডাটাবেজ সমস্যা সমাধান):</label>
+                    <input type="text" id="mAdminNotes" placeholder="Database sync fixed / UPI payment verified" class="w-full px-3.5 py-2 border rounded-xl outline-none">
+                </div>
+            </div>
+
+            <div class="pt-2 border-t flex justify-end gap-2">
+                <button onclick="closeClientModal()" class="px-4 py-2 bg-gray-100 rounded-xl font-bold">Cancel</button>
+                <button onclick="saveClientToFirebase()" class="px-5 py-2 bg-primary text-white rounded-xl font-bold shadow-sm">Save Client</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & CORE CONTROLLER -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVONxcHUwzSMcn1wAlE_FfAne4P4fobDg",
+            authDomain: "menu-app-db2e7.firebaseapp.com",
+            databaseURL: "https://menu-app-db2e7-default-rtdb.firebaseio.com",
+            projectId: "menu-app-db2e7",
+            storageBucket: "menu-app-db2e7.firebasestorage.app",
+            messagingSenderId: "679971467353",
+            appId: "1:679971467353:web:a399d60cd4bf0273858148",
+            measurementId: "G-F4PSQGYFNQ"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 1. MASTER PASSCODE
+        const MASTER_KEY = "superadmin@2026";
+        let rawClients = {};
+
+        function verifyOwnerPasscode() {
+            const val = document.getElementById('ownerPasscode').value.trim();
+            if (val === MASTER_KEY) {
+                document.getElementById('masterAuthOverlay').style.display = 'none';
+                document.getElementById('masterDashboard').classList.remove('hidden');
+                initMasterConsole();
+            } else {
+                document.getElementById('authErrorMsg').classList.remove('hidden');
+            }
+        }
+        document.getElementById('ownerPasscode').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') verifyOwnerPasscode();
+        });
+
+        // 2. TAB CONTROLLER
+        function switchTab(tabId) {
+            const tabs = ['analytics', 'clients', 'plans', 'websiteCms', 'tickets'];
+            tabs.forEach(t => {
+                const el = document.getElementById(t + 'Tab');
+                if(el) el.classList.add('hidden');
+            });
+            document.getElementById(tabId + 'Tab').classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all";
+            });
+            event.target.className = "tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all";
+        }
+
+        // 3. INITIALIZE LISTENERS
+        function initMasterConsole() {
+            // A. Subscribers / Clients
+            database.ref('platformClients').on('value', (snap) => {
+                rawClients = snap.val() || {};
+                renderClientsDirectory();
+                computeAnalytics();
+            });
+
+            // B. Bank & Plans
+            database.ref('settings/subscriptionPlans').on('value', (snap) => {
+                const s = snap.val() || {};
+                if(s.Starter) {
+                    document.getElementById('p1Name').value = s.Starter.name || "Starter";
+                    document.getElementById('p1Price').value = s.Starter.price || "1,999";
+                    if(s.Starter.features) document.getElementById('p1Features').value = Array.isArray(s.Starter.features) ? s.Starter.features.join(', ') : s.Starter.features;
+                }
+                if(s.Professional) {
+                    document.getElementById('p2Name').value = s.Professional.name || "Professional";
+                    document.getElementById('p2Price').value = s.Professional.price || "4,999";
+                    if(s.Professional.features) document.getElementById('p2Features').value = Array.isArray(s.Professional.features) ? s.Professional.features.join(', ') : s.Professional.features;
+                }
+                if(s.Enterprise) {
+                    document.getElementById('p3Name').value = s.Enterprise.name || "Enterprise";
+                    document.getElementById('p3Price').value = s.Enterprise.price || "Custom";
+                    if(s.Enterprise.features) document.getElementById('p3Features').value = Array.isArray(s.Enterprise.features) ? s.Enterprise.features.join(', ') : s.Enterprise.features;
+                }
+            });
+
+            database.ref('platformSettings/bank').on('value', (snap) => {
+                const b = snap.val() || {};
+                document.getElementById('cfgAdminUpi').value = b.upi || "";
+                document.getElementById('cfgAdminAccountName').value = b.accName || "";
+                document.getElementById('cfgAdminAccountNo').value = b.accNo || "";
+                document.getElementById('cfgAdminIfsc').value = b.ifsc || "";
+                document.getElementById('cfgAdminRzpKey').value = b.rzpKey || "";
+            });
+
+            // C. Website CMS & Modals (About, Privacy, Terms)
+            database.ref('settings/landingPage').on('value', (snap) => {
+                const w = snap.val() || {};
+                document.getElementById('cfgWebAbout').value = w.aboutUs || "";
+                document.getElementById('cfgWebPrivacy').value = w.privacy || "";
+                document.getElementById('cfgWebTerms').value = w.terms || "";
+                document.getElementById('cfgWebSupportPhone').value = w.supportPhone || "+91 98765 43210";
+            });
+
+            database.ref('settings/branding').on('value', (snap) => {
+                const br = snap.val() || {};
+                if(br.name) document.getElementById('cfgWebBrandName').value = br.name;
+            });
+
+            // D. Support Tickets
+            database.ref('platformSupportTickets').on('value', (snap) => {
+                const t = snap.val() || {};
+                renderSupportTickets(t);
+                document.getElementById('tabTicketCount').innerText = Object.keys(t).length;
+            });
+        }
+
+        // 4. RENDER SUBSCRIBERS
+        function renderClientsDirectory(list = null) {
+            const tb = document.getElementById('clientsTableBody');
+            tb.innerHTML = "";
+            const data = list || rawClients;
+            const keys = Object.keys(data);
+            document.getElementById('tabClientCount').innerText = keys.length;
+
+            if(keys.length === 0) {
+                tb.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-400">কোনো ক্লায়েন্ট নথিভুক্ত নেই। Add Client চাপুন।</td></tr>`;
+                return;
+            }
+
+            keys.forEach(k => {
+                const c = data[k];
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50/80 transition-colors";
+
+                let statusBadge = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                if(c.status === 'Expiring') statusBadge = "bg-amber-50 text-amber-700 border-amber-200";
+                if(c.status === 'Payment Failed') statusBadge = "bg-red-50 text-red-700 border-red-200 animate-pulse";
+                if(c.status === 'Suspended') statusBadge = "bg-gray-100 text-gray-700 border-gray-300";
+                if(c.assignedPlan === 'Free Trial') statusBadge = "bg-blue-50 text-blue-700 border-blue-200";
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-gray-900">${c.outletName}</div>
+                        <span class="text-[10px] text-gray-400">ID: ${k}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-gray-800">${c.ownerName}</div>
+                        <div class="text-[10px] text-gray-500">Ph: ${c.ownerPhone}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded-md bg-gray-100 font-bold text-gray-700">${c.assignedPlan || 'Professional'}</span>
+                    </td>
+                    <td class="py-3 px-4 font-bold text-gray-600">${c.expiryDate || 'N/A'}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2.5 py-1 rounded-full border text-[10px] font-extrabold ${statusBadge}">
+                            ${c.status || 'Active'}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-right space-x-1">
+                        <a href="tel:${c.ownerPhone}" class="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 inline-block" title="Call Owner">
+                            <span class="material-symbols-outlined text-sm">call</span>
+                        </a>
+                        <button onclick="sendRenewalReminder('${c.ownerPhone}', '${c.outletName}', '${c.expiryDate}')" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 inline-block" title="WhatsApp Renewal SMS">
+                            <span class="material-symbols-outlined text-sm">chat</span>
+                        </button>
+                        <button onclick="editClient('${k}')" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 inline-block" title="Edit Client">
+                            <span class="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                        <button onclick="toggleSuspendClient('${k}', '${c.status}')" class="p-1.5 rounded-lg ${c.status === 'Suspended' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-50 text-red-700'} inline-block" title="Toggle Suspend">
+                            <span class="material-symbols-outlined text-sm">${c.status === 'Suspended' ? 'lock_open' : 'block'}</span>
+                        </button>
+                    </td>
+                `;
+                tb.appendChild(tr);
+            });
+        }
+
+        // 5. ANALYTICS & RENEWAL ALERTS
+        function computeAnalytics() {
+            const keys = Object.keys(rawClients);
+            let active = 0;
+            let freeTrial = 0;
+            let paymentFailed = 0;
+            let revenue = 0;
+
+            const now = new Date();
+            const sevenDaysLater = new Date();
+            sevenDaysLater.setDate(now.getDate() + 7);
+
+            const urgentList = document.getElementById('urgentRenewalList');
+            urgentList.innerHTML = "";
+            let urgentCount = 0;
+
+            keys.forEach(k => {
+                const c = rawClients[k];
+                if(c.status === 'Active') active++;
+                if(c.assignedPlan === 'Free Trial') freeTrial++;
+                if(c.status === 'Payment Failed') paymentFailed++;
+
+                // Revenue calculation based on plan price
+                if(c.assignedPlan === 'Starter') revenue += 1999;
+                else if(c.assignedPlan === 'Professional') revenue += 4999;
+
+                if (c.expiryDate) {
+                    const exp = new Date(c.expiryDate);
+                    if ((exp <= sevenDaysLater && exp >= now) || c.status === 'Payment Failed') {
+                        urgentCount++;
+                        const card = document.createElement('div');
+                        card.className = "p-3 rounded-2xl bg-amber-50 border border-amber-200 flex justify-between items-center";
+                        card.innerHTML = `
+                            <div>
+                                <span class="font-bold text-amber-900">${c.outletName} (${c.ownerName})</span>
+                                <p class="text-[10px] text-amber-700">স্ট্যাটাস: ${c.status || 'Expiring'} | মেয়াদ: ${c.expiryDate} (Ph: ${c.ownerPhone})</p>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <a href="tel:${c.ownerPhone}" class="px-3 py-1 bg-white border border-amber-300 rounded-lg text-amber-900 font-bold">Call</a>
+                                <button onclick="sendRenewalReminder('${c.ownerPhone}', '${c.outletName}', '${c.expiryDate}')" class="px-3 py-1 bg-emerald-700 text-white rounded-lg font-bold">WhatsApp Reminder</button>
+                            </div>
+                        `;
+                        urgentList.appendChild(card);
+                    }
+                }
+            });
+
+            document.getElementById('statTotalClients').innerText = keys.length;
+            document.getElementById('statActiveSubs').innerText = active;
+            document.getElementById('statFreeTrial').innerText = freeTrial;
+            document.getElementById('statPaymentFailed').innerText = paymentFailed;
+            document.getElementById('statTotalRevenue').innerText = `₹${revenue}`;
+
+            if(urgentCount === 0) {
+                urgentList.innerHTML = `<p class="text-gray-400 py-4 text-center">বর্তমানে কোনো জরুরি রিনিউয়াল বা পেমেন্ট ফেল বাকি নেই।</p>`;
+            }
+        }
+
+        // 6. CLIENT MODAL ACTIONS
+        function openNewClientModal() {
+            document.getElementById('editClientKey').value = "";
+            document.getElementById('mOutletName').value = "";
+            document.getElementById('mOwnerName').value = "";
+            document.getElementById('mOwnerPhone').value = "";
+            document.getElementById('mAdminNotes').value = "";
+            document.getElementById('clientModal').classList.remove('hidden');
+            document.getElementById('clientModal').classList.add('flex');
+        }
+
+        function closeClientModal() {
+            document.getElementById('clientModal').classList.add('hidden');
+            document.getElementById('clientModal').classList.remove('flex');
+        }
+
+        function saveClientToFirebase() {
+            const key = document.getElementById('editClientKey').value || 'REST_' + Date.now().toString(36);
+            const data = {
+                outletName: document.getElementById('mOutletName').value.trim(),
+                ownerName: document.getElementById('mOwnerName').value.trim(),
+                ownerPhone: document.getElementById('mOwnerPhone').value.trim(),
+                assignedPlan: document.getElementById('mAssignedPlan').value,
+                status: document.getElementById('mSubStatus').value,
+                expiryDate: document.getElementById('mExpiryDate').value,
+                notes: document.getElementById('mAdminNotes').value.trim(),
+                updatedAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            if(!data.outletName || !data.ownerPhone) {
+                alert("দয়া করে রেস্তোরাঁর নাম ও মোবাইল নম্বর পূরণ করুন।");
+                return;
+            }
+
+            database.ref('platformClients/' + key).update(data).then(() => {
+                closeClientModal();
+                alert("✅ রেস্তোরাঁ ক্লায়েন্টের তথ্য সফলভাবে সেভ হয়েছে!");
+            });
+        }
+
+        function editClient(k) {
+            const c = rawClients[k];
+            if(!c) return;
+            document.getElementById('editClientKey').value = k;
+            document.getElementById('mOutletName').value = c.outletName || "";
+            document.getElementById('mOwnerName').value = c.ownerName || "";
+            document.getElementById('mOwnerPhone').value = c.ownerPhone || "";
+            document.getElementById('mAssignedPlan').value = c.assignedPlan || "Professional";
+            document.getElementById('mSubStatus').value = c.status || "Active";
+            document.getElementById('mExpiryDate').value = c.expiryDate || "";
+            document.getElementById('mAdminNotes').value = c.notes || "";
+            document.getElementById('clientModal').classList.remove('hidden');
+            document.getElementById('clientModal').classList.add('flex');
+        }
+
+        function toggleSuspendClient(k, currentStatus) {
+            const newStatus = currentStatus === 'Suspended' ? 'Active' : 'Suspended';
+            if(confirm(`এই রেস্তোরাঁর অ্যাকাউন্টটি ${newStatus} করতে চান?`)) {
+                database.ref(`platformClients/${k}`).update({ status: newStatus });
+            }
+        }
+
+        function sendRenewalReminder(phone, outlet, date) {
+            const msg = `*OrderTrack Cloud Billing*%0A` +
+                        `নমস্কার! আপনার *${outlet}*-এর সাবস্ক্রিপশন মেয়াদ *${date}* তারিখে শেষ হচ্ছে বা পেমেন্ট বকেয়া রয়েছে।%0A` +
+                        `আপনার রেস্তোরাঁ কাউন্টার ও কিচেন ডিসপ্লে সচল রাখতে দয়া করে দ্রুত সাবস্ক্রিপশন রিনিউ করুন।%0A` +
+                        `সহযোগিতায়: +91 98765 43210. ধন্যবাদ!`;
+            window.open(`https://wa.me/91${phone.replace(/\D/g,'')}?text=${msg}`, '_blank');
+        }
+
+        function filterClients() {
+            const q = document.getElementById('clientSearchInput').value.toLowerCase();
+            const filtered = {};
+            for(let k in rawClients) {
+                const c = rawClients[k];
+                if ((c.outletName || '').toLowerCase().includes(q) ||
+                    (c.ownerName || '').toLowerCase().includes(q) ||
+                    (c.ownerPhone || '').includes(q)) {
+                    filtered[k] = c;
+                }
+            }
+            renderClientsDirectory(filtered);
+        }
+
+        // 7. SAVE PLANS & BANK DETAILS (Catering Homepage)
+        function savePlansAndBank() {
+            const bankData = {
+                upi: document.getElementById('cfgAdminUpi').value.trim(),
+                accName: document.getElementById('cfgAdminAccountName').value.trim(),
+                accNo: document.getElementById('cfgAdminAccountNo').value.trim(),
+                ifsc: document.getElementById('cfgAdminIfsc').value.trim(),
+                rzpKey: document.getElementById('cfgAdminRzpKey').value.trim()
+            };
+
+            const plansData = {
+                Starter: {
+                    name: document.getElementById('p1Name').value.trim(),
+                    price: document.getElementById('p1Price').value.trim(),
+                    features: document.getElementById('p1Features').value.split(',').map(x => x.trim()).filter(Boolean)
+                },
+                Professional: {
+                    name: document.getElementById('p2Name').value.trim(),
+                    price: document.getElementById('p2Price').value.trim(),
+                    features: document.getElementById('p2Features').value.split(',').map(x => x.trim()).filter(Boolean)
+                },
+                Enterprise: {
+                    name: document.getElementById('p3Name').value.trim(),
+                    price: document.getElementById('p3Price').value.trim(),
+                    features: document.getElementById('p3Features').value.split(',').map(x => x.trim()).filter(Boolean)
+                }
+            };
+
+            database.ref('platformSettings/bank').set(bankData);
+            database.ref('settings/subscriptionPlans').set(plansData).then(() => {
+                alert("🎉 সাবস্ক্রিপশন প্ল্যান ও প্রাইস সফলভাবে আপডেট এবং হোমপেজে লাইভ সিঙ্ক করা হয়েছে!");
+            });
+        }
+
+        // 8. SAVE WEBSITE CMS (About, Privacy, Terms, Logo)
+        function saveWebsiteCms() {
+            const brandName = document.getElementById('cfgWebBrandName').value.trim();
+            const supportPhone = document.getElementById('cfgWebSupportPhone').value.trim();
+            const aboutUs = document.getElementById('cfgWebAbout').value.trim();
+            const privacy = document.getElementById('cfgWebPrivacy').value.trim();
+            const terms = document.getElementById('cfgWebTerms').value.trim();
+
+            database.ref('settings/branding').update({ name: brandName });
+            database.ref('settings/landingPage').set({
+                aboutUs: aboutUs,
+                privacy: privacy,
+                terms: terms,
+                supportPhone: supportPhone,
+                updatedAt: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                alert("🌐 হোমপেজের লোগো, নাম, অ্যাবাউট আস, প্রাইভেসি ও টার্মস সফলভাবে আপডেট হয়েছে!");
+            });
+        }
+
+        // 9. HELPDESK & SUPPORT TICKETS
+        function renderSupportTickets(tickets) {
+            const c = document.getElementById('ticketsListContainer');
+            const keys = Object.keys(tickets);
+            if(keys.length === 0) {
+                c.innerHTML = `<div class="p-8 text-center text-gray-400 font-medium">কোনো পেন্ডিং সাপোর্ট টিকিট বা হেল্প রিকুয়েস্ট নেই। সমস্ত সিস্টেম সক্রিয়।</div>`;
+                return;
+            }
+            c.innerHTML = "";
+            keys.forEach(k => {
+                const t = tickets[k];
+                const div = document.createElement('div');
+                div.className = "p-4 rounded-2xl bg-gray-50 border border-gray-200 flex justify-between items-center";
+                div.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-900">${t.restaurantName || 'Client Restaurant'}</span>
+                            <span class="px-2 py-0.5 bg-red-100 text-red-700 font-extrabold text-[10px] rounded-full">${t.issueType || 'Technical Problem'}</span>
+                        </div>
+                        <p class="text-gray-600 mt-1">${t.description}</p>
+                        <span class="text-[10px] text-gray-400">Phone: ${t.phone} • Time: ${t.time || 'Today'}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="tel:${t.phone}" class="px-3 py-1.5 bg-white border rounded-xl font-bold text-gray-700">Call Help</a>
+                        <button onclick="resolveTicket('${k}')" class="px-3 py-1.5 bg-emerald-700 text-white rounded-xl font-bold">Mark Resolved</button>
+                    </div>
+                `;
+                c.appendChild(div);
+            });
+        }
+
+        function resolveTicket(k) {
+            database.ref('platformSupportTickets/' + k).remove();
+        }
+    </script>
+</body>
+</html>
