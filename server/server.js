@@ -186,7 +186,24 @@ app.post('/api/auth/send-otp', async (req, res) => {
             [identifier, otpCode, expiresAt]
         );
 
-        console.log(`📱 [OTP Gateway Simulation] Sent to ${identifier} -> Code: ${otpCode}`);
+        // আসল এসএমএস গেটওয়ে এপিআই কল:
+        try {
+            const axios = require('axios');
+            await axios.get(`https://www.fast2sms.com/dev/bulkV2`, {
+                params: {
+                    authorization: process.env.SMS_API_KEY, // এটি রেন্ডারের এনভায়রনমেন্টে সেভ করতে হবে
+                    route: 'q',
+                    message: `Your OrderSync OTP is ${otpCode}. Valid for 5 minutes.`,
+                    language: 'english',
+                    flash: 0,
+                    numbers: identifier
+                }
+            });
+            console.log(`📱 SMS Sent successfully to ${identifier}`);
+        } catch (smsErr) {
+            console.error("❌ SMS API Error:", smsErr.message);
+        }
+        
         res.json({ success: true, message: "OTP sent successfully." });
     } catch (err) {
         console.error("❌ Send OTP Error:", err.message);
@@ -218,6 +235,188 @@ app.post('/api/auth/verify-otp', async (req, res) => {
         res.status(500).json({ error: "Internal Security Error." });
     }
 });
+
+
+// =========================================================================
+// SUBSCRIPTION & SUPER ADMIN APIS
+// =========================================================================
+
+// ১. সাবস্ক্রিপশন চেক করার মিডওয়্যার (প্রটেক্টেড রাউটে ব্যবহার করার জন্য)
+const verifySubscription = async (req, res, next) => {
+    try {
+        const restaurant_id = req.body.restaurant_id || req.headers['x-restaurant-id'] || req.query.restaurant_id;
+        if (!restaurant_id) {
+            return res.status(400).json({ error: "Restaurant ID is required for verification." });
+        }
+        const result = await pool.query(
+            "SELECT subscription_status, plan_expires_at, assigned_plan FROM restaurants WHERE id = $1",
+            [restaurant_id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Restaurant not found." });
+        }
+        const restaurant = result.rows[0];
+        const now = new Date();
+        const expiresAt = new Date(restaurant.plan_expires_at);
+
+        if (restaurant.subscription_status !== 'ACTIVE' || expiresAt < now) {
+            return res.status(403).json({ 
+                error: "Your subscription has expired or is inactive. Please renew your plan." 
+            });
+        }
+        req.assignedPlan = restaurant.assigned_plan;
+        next();
+    } catch (err) {
+        console.error("Subscription Verification Error:", err);
+        res.status(500).json({ error: "Internal server error during subscription check." });
+    }
+};
+
+// ২. নতুন রেস্টুরেন্ট রেজিস্ট্রেশন (অটোমেটিক ১৪ দিনের ফ্রি ট্রায়াল)
+app.post('/api/restaurant/register', async (req, res) => {
+    try {
+        const { id, name, phone, email } = req.body;
+        if (!id || !name || !phone || !email) {
+            return res.status(400).json({ error: "All fields are required." });
+        }
+        const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // ১৪ দিন ফ্রি ট্রায়াল
+
+        await pool.query(
+            `INSERT INTO restaurants (id, name, phone, email, assigned_plan, subscription_status, plan_expires_at) 
+             VALUES ($1, $2, $3, $4, 'Free Trial', 'ACTIVE', $5)
+             ON CONFLICT (id) DO UPDATE SET 
+             assigned_plan = EXCLUDED.assigned_plan, 
+             subscription_status = EXCLUDED.subscription_status, 
+             plan_expires_at = EXCLUDED.plan_expires_at`,
+            [id, name, phone, email, trialExpiresAt]
+        );
+
+        res.json({ 
+            success: true, 
+            message: "Restaurant registered with 14 days free trial!",
+            plan_expires_at: trialExpiresAt
+        });
+    } catch (err) {
+        console.error("Registration Error:", err);
+        res.status(500).json({ error: "Registration failed." });
+    }
+});
+
+// ৩. সুপার অ্যাডমিন: যেকোনো রেস্টুরেন্টের প্ল্যান/মেয়াদ ফিক্স বা আপডেট করা
+app.post('/api/admin/update-subscription', async (req, res) => {
+    try {
+        const { admin_secret, restaurant_id, assigned_plan, plan_expires_at, subscription_status } = req.body;
+        
+        if (admin_secret !== process.env.SUPER_ADMIN_SECRET) {
+            return res.status(403).json({ error: "Unauthorized Super Admin Action!" });
+        }
+
+        await pool.query(
+            `UPDATE restaurants 
+             SET assigned_plan = COALESCE($1, assigned_plan), 
+                 plan_expires_at = COALESCE($2, plan_expires_at), 
+                 subscription_status = COALESCE($3, subscription_status) 
+             WHERE id = $4`,
+            [assigned_plan, plan_expires_at, subscription_status, restaurant_id]
+        );
+
+        res.json({ 
+            success: true, 
+            message: `Subscription updated for restaurant ID: ${restaurant_id}` 
+        });
+    } catch (err) {
+        console.error("Admin Update Error:", err);
+        res.status(500).json({ error: "Failed to update subscription." });
+    }
+});
+
+// ৪. সুপার অ্যাডমিন: প্ল্যানের লিস্ট দেখা
+app.get('/api/admin/plans', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM subscription_plans ORDER BY price ASC");
+        res.json({ success: true, plans: result.rows });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch plans" });
+    }
+});
+
+// ৫. সুপার অ্যাডমিন: নতুন প্ল্যান বা স্পেশ্যাল প্রাইস তৈরি/আপডেট করা
+app.post('/api/admin/plans', async (req, res) => {
+    try {
+        const { admin_secret, plan_name, price, duration_days, max_staff, description } = req.body;
+        if (admin_secret !== process.env.SUPER_ADMIN_SECRET) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+        await pool.query(
+            `INSERT INTO subscription_plans (plan_name, price, duration_days, max_staff, description)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (plan_name) DO UPDATE SET price = $2, duration_days = $3, max_staff = $4, description = $5`,
+            [plan_name, price, duration_days, max_staff, description]
+        );
+        res.json({ success: true, message: "Subscription plan saved/updated successfully!" });
+    } catch (err) {
+        console.error("Plan Save Error:", err);
+        res.status(500).json({ error: "Failed to save plan" });
+    }
+});
+
+// --- SUPER ADMIN CORE MANAGEMENT APIS FOR super-admin.html ---
+const verifySuperAdmin = (req, res, next) => {
+    const adminSecret = req.headers['x-admin-secret'] || req.body.admin_secret;
+    if (!adminSecret || adminSecret !== process.env.SUPER_ADMIN_SECRET) {
+        return res.status(403).json({ error: "Access Denied: Invalid Super Admin Secret!" });
+    }
+    next();
+};
+
+app.get('/api/admin/stats', verifySuperAdmin, async (req, res) => {
+    try {
+        const totalRestaurants = await pool.query("SELECT COUNT(*) FROM restaurants");
+        const activeSubscriptions = await pool.query("SELECT COUNT(*) FROM restaurants WHERE subscription_status = 'ACTIVE' AND plan_expires_at > NOW()");
+        res.json({
+            success: true,
+            stats: {
+                total_restaurants: parseInt(totalRestaurants.rows[0].count),
+                active_subscriptions: parseInt(activeSubscriptions.rows[0].count)
+            }
+        });
+    } catch (err) {
+        console.error("Stats Error:", err);
+        res.status(500).json({ error: "Failed to fetch admin stats." });
+    }
+});
+
+app.get('/api/admin/restaurants', verifySuperAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, name, phone, email, subscription_status, assigned_plan, plan_expires_at, created_at 
+             FROM restaurants 
+             ORDER BY created_at DESC`
+        );
+        res.json({ success: true, restaurants: result.rows });
+    } catch (err) {
+        console.error("Fetch Restaurants Error:", err);
+        res.status(500).json({ error: "Failed to fetch restaurants." });
+    }
+});
+
+app.post('/api/admin/restaurant-status', verifySuperAdmin, async (req, res) => {
+    try {
+        const { restaurant_id, status } = req.body; 
+        if (!restaurant_id || !status) {
+            return res.status(400).json({ error: "Restaurant ID and status are required." });
+        }
+        await pool.query(
+            "UPDATE restaurants SET subscription_status = $1 WHERE id = $2",
+            [status, restaurant_id]
+        );
+        res.json({ success: true, message: `Restaurant ${restaurant_id} status updated to ${status}` });
+    } catch (err) {
+        console.error("Status Update Error:", err);
+        res.status(500).json({ error: "Failed to update restaurant status." });
+    }
+});
+
 
 app.post('/api/auth/register', async (req, res) => {
     const restaurantName = req.body.restaurantName?.trim();

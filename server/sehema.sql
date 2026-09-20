@@ -102,6 +102,16 @@ CREATE TABLE IF NOT EXISTS support_tickets (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 9. SUBSCRIPTION PLANS TABLE
+CREATE TABLE IF NOT EXISTS subscription_plans (
+    id SERIAL PRIMARY KEY,
+    plan_name VARCHAR(100) UNIQUE NOT NULL,
+    price NUMERIC(10, 2) NOT NULL,
+    duration_days INT NOT NULL DEFAULT 365,
+    max_staff INT DEFAULT 5,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 -- =========================================================================
 -- HIGH-PERFORMANCE INDEXING (Optimized for 100k+ Concurrent Restaurants)
 -- =========================================================================
@@ -111,3 +121,9 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON restaurant_users(email);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON restaurant_users(phone);
 CREATE INDEX IF NOT EXISTS idx_devices_uuid ON authorized_devices(device_uuid);
 CREATE INDEX IF NOT EXISTS idx_orders_resto ON orders(restaurant_id);
+
+-- =========================================================================
+-- EXTRA PERFORMANCE INDEXES FOR KDS & OTP (NEW ADDITION)
+-- =========================================================================
+CREATE INDEX IF NOT EXISTS idx_orders_status_resto ON orders(restaurant_id, status);
+CREATE INDEX IF NOT EXISTS idx_otps_expires ON phone_otps(expires_at);
