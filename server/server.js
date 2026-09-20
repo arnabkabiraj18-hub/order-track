@@ -18,6 +18,12 @@ const rateLimit = require('express-rate-limit');
 const pool = require('./db');
 
 const app = express();
+const path = require('path');
+app.use(express.static(path.join(__dirname)));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src/admin/index.html'));
+});
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*" }
@@ -416,6 +422,7 @@ app.post('/api/admin/restaurant-status', verifySuperAdmin, async (req, res) => {
         res.status(500).json({ error: "Failed to update restaurant status." });
     }
 });
+
 
 
 app.post('/api/auth/register', async (req, res) => {
