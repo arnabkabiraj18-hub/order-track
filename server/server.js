@@ -19,10 +19,13 @@ const pool = require('./db');
 
 const app = express();
 const path = require('path');
-app.use(express.static(path.join(__dirname)));
 
+// এক ধাপ উপরে (মূল রুট ফোল্ডার থেকে) স্ট্যাটিক ফাইল সার্ভ করার জন্য
+app.use(express.static(path.join(__dirname, '../')));
+
+// মূল রুট (/) এ গেলে সঠিক path থেকে index.html দেখাবে
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'src/admin/index.html'));
+    res.sendFile(path.join(__dirname, '../src/admin/index.html'));
 });
 const server = http.createServer(app);
 const io = new Server(server, {
