@@ -79,7 +79,7 @@
 
                     <div>
                         <label class="block font-medium text-text-main mb-1">Admin Mobile Number (10 Digits) *</label>
-                        <input type="tel" id="regPhone" required maxlength="10" placeholder="9876543210" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-lg font-bold text-text-main focus:border-brand-red focus:ring-0">
+                        <input type="tel" id="regPhone" required maxlength="10" placeholder="Enter 10-digit mobile number" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-lg font-bold text-text-main focus:border-brand-red focus:ring-0">
                     </div>
 
                     <div>
@@ -95,35 +95,27 @@
                     </div>
 
                     <button type="submit" id="btnStep1" class="w-full py-3 bg-brand-red hover:bg-brand-red-hover text-white font-semibold text-xs rounded-lg shadow-md transition-all active:scale-98 flex items-center justify-center gap-1">
-                        <span>Verify Phone & Email</span>
+                        <span>Verify Phone via OTP</span>
                         <span class="material-symbols-outlined text-sm">arrow_forward</span>
                     </button>
                 </form>
             </div>
 
-            <!-- STEP 2: DUAL OTP VERIFICATION -->
+            <!-- STEP 2: PHONE OTP VERIFICATION -->
             <div id="viewStep2" class="space-y-5 hidden">
                 <div class="space-y-1">
                     <span class="text-[10px] font-bold text-brand-red uppercase tracking-wider">Step 2 of 4</span>
-                    <h2 class="font-serif text-2xl font-bold text-text-main">Verify Identity</h2>
-                    <p class="text-xs text-text-muted">Enter verification codes sent to your phone and email.</p>
+                    <h2 class="font-serif text-2xl font-bold text-text-main">Verify Phone</h2>
+                    <p class="text-xs text-text-muted">Enter 6-digit verification code sent to your mobile number.</p>
                 </div>
 
                 <form onsubmit="handleStep2Otp(event)" class="space-y-4 text-xs">
                     <div class="p-3 bg-bg-cream rounded-xl border border-border-line space-y-1.5">
                         <div class="flex justify-between items-center">
-                            <span class="font-semibold text-text-main">SMS OTP (Phone):</span>
-                            <span id="resendPhoneOtp" class="text-[10px] text-brand-red font-bold cursor-pointer underline" onclick="triggerResendOtp('phone')">Resend OTP</span>
+                            <span class="font-semibold text-text-main">SMS OTP Code:</span>
+                            <span id="resendPhoneOtp" class="text-[10px] text-brand-red font-bold cursor-pointer underline" onclick="triggerResendOtp()">Resend OTP</span>
                         </div>
-                        <input type="text" id="inputPhoneOtp" maxlength="6" placeholder="123456" class="w-full px-3.5 py-2 bg-white border border-border-line rounded-lg text-center font-bold tracking-widest text-sm focus:border-brand-red focus:ring-0">
-                    </div>
-
-                    <div class="p-3 bg-bg-cream rounded-xl border border-border-line space-y-1.5">
-                        <div class="flex justify-between items-center">
-                            <span class="font-semibold text-text-main">Work Email OTP:</span>
-                            <span id="resendEmailOtp" class="text-[10px] text-brand-red font-bold cursor-pointer underline" onclick="triggerResendOtp('email')">Resend OTP</span>
-                        </div>
-                        <input type="text" id="inputEmailOtp" maxlength="6" placeholder="123456" class="w-full px-3.5 py-2 bg-white border border-border-line rounded-lg text-center font-bold tracking-widest text-sm focus:border-brand-red focus:ring-0">
+                        <input type="text" id="inputPhoneOtp" maxlength="6" placeholder="Enter 6-digit code" class="w-full px-3.5 py-2 bg-white border border-border-line rounded-lg text-center font-bold tracking-widest text-sm focus:border-brand-red focus:ring-0">
                     </div>
 
                     <div class="flex items-center justify-between pt-2">
@@ -131,7 +123,7 @@
                             <span class="material-symbols-outlined text-sm">arrow_back</span> Back
                         </button>
                         <button type="submit" id="btnVerifyOtp" class="px-6 py-2.5 bg-brand-red hover:bg-brand-red-hover text-white font-semibold text-xs rounded-lg shadow-md transition-all">
-                            Verify Codes
+                            Verify Code
                         </button>
                     </div>
                 </form>
@@ -149,7 +141,7 @@
                     <div>
                         <label class="block font-medium text-text-main mb-1">Account Master Password *</label>
                         <div class="relative flex items-center">
-                            <input type="password" id="regPass" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-lg font-bold text-text-main focus:border-brand-red focus:ring-0">
+                            <input type="password" id="regPass" required placeholder="Minimum 6 characters" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-lg font-bold text-text-main focus:border-brand-red focus:ring-0">
                             <button type="button" onclick="togglePassEye('regPass', this)" class="absolute right-3 text-gray-400 hover:text-text-main">
                                 <span class="material-symbols-outlined text-base">visibility</span>
                             </button>
@@ -159,7 +151,7 @@
                     <div>
                         <label class="block font-medium text-text-main mb-1">Confirm Password *</label>
                         <div class="relative flex items-center">
-                            <input type="password" id="regConfirmPass" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-lg font-bold text-text-main focus:border-brand-red focus:ring-0">
+                            <input type="password" id="regConfirmPass" required placeholder="Re-enter password" class="w-full px-3.5 py-2.5 bg-white border border-border-line rounded-lg font-bold text-text-main focus:border-brand-red focus:ring-0">
                             <button type="button" onclick="togglePassEye('regConfirmPass', this)" class="absolute right-3 text-gray-400 hover:text-text-main">
                                 <span class="material-symbols-outlined text-base">visibility</span>
                             </button>
@@ -196,7 +188,7 @@
                     <div id="cardStarter" onclick="selectPlanTier('Starter')" class="border-2 border-border-line rounded-xl p-4 space-y-2 flex flex-col justify-between cursor-pointer transition-all hover:border-brand-red/60">
                         <div class="space-y-1">
                             <h4 class="font-serif font-bold text-sm text-text-main">Starter</h4>
-                            <p class="text-xs font-serif font-bold text-brand-red"><span class="text-base">₹1,999</span> <span class="text-[10px] text-text-muted font-sans font-normal">/mo</span></p>
+                            <p class="text-xs font-serif font-bold text-brand-red"><span class="text-base">₹399</span> <span class="text-[10px] text-text-muted font-sans font-normal">/year</span></p>
                             <p class="text-[10px] text-text-muted leading-tight">Digital QR Standee + Up to 50 items.</p>
                         </div>
                         <span id="labelStarter" class="text-[10px] font-bold text-text-muted block text-center py-1">Click to Select</span>
@@ -206,7 +198,7 @@
                         <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-brand-red text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">☆ Selected</span>
                         <div class="space-y-1">
                             <h4 class="font-serif font-bold text-sm text-text-main">Professional</h4>
-                            <p class="text-xs font-serif font-bold text-brand-red"><span class="text-base">₹4,999</span> <span class="text-[10px] text-text-muted font-sans font-normal">/mo</span></p>
+                            <p class="text-xs font-serif font-bold text-brand-red"><span class="text-base">₹999</span> <span class="text-[10px] text-text-muted font-sans font-normal">/year</span></p>
                             <p class="text-[10px] text-text-muted leading-tight">Full KDS, Waiter Desk & POS integration.</p>
                         </div>
                         <span id="labelProfessional" class="text-[10px] font-bold text-brand-red block text-center py-1">Active Choice</span>
@@ -215,7 +207,7 @@
                     <div id="cardEnterprise" onclick="selectPlanTier('Enterprise')" class="border-2 border-border-line rounded-xl p-4 space-y-2 flex flex-col justify-between cursor-pointer transition-all hover:border-brand-red/60">
                         <div class="space-y-1">
                             <h4 class="font-serif font-bold text-sm text-text-main">Enterprise</h4>
-                            <p class="text-xs font-serif font-bold text-brand-red"><span class="text-base">Custom</span></p>
+                            <p class="text-xs font-serif font-bold text-brand-red"><span class="text-base">₹2,999</span> <span class="text-[10px] text-text-muted font-sans font-normal">/year</span></p>
                             <p class="text-[10px] text-text-muted leading-tight">Multi-outlet chain management.</p>
                         </div>
                         <span id="labelEnterprise" class="text-[10px] font-bold text-text-muted block text-center py-1">Click to Select</span>
@@ -260,9 +252,18 @@
     </footer>
 
     <script>
-        const API_BASE_URL = "http://localhost:5000"; // PostgreSQL Backend API URL
+        const API_BASE_URL = "https://order-track-qibw.onrender.com"; // Render Live Backend URL
         let signupData = {};
         let currentSelectedPlan = "Professional";
+
+        // URL প্যারামিটার থেকে প্ল্যান নেওয়ার প্রিফারেন্স চেক
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const planParam = urlParams.get('plan');
+            if (planParam) {
+                selectPlanTier(planParam);
+            }
+        });
 
         function togglePassEye(inputId, btn) {
             const input = document.getElementById(inputId);
@@ -307,21 +308,20 @@
 
             const btn = document.getElementById('btnStep1');
             btn.disabled = true;
-            btn.innerText = "Sending Verification OTPs...";
+            btn.innerText = "Sending Verification OTP...";
 
             try {
-                // ব্যাকএন্ড API-এ রিকোয়েস্ট পাঠিয়ে ফোন ও ইমেলে রিয়েল OTP জেনারেট ও ট্রিগার করা হচ্ছে
                 const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, email })
+                    body: JSON.stringify({ identifier: phone })
                 });
 
                 const data = await res.json();
                 if (!res.ok) {
-                    alert(data.message || "Registration failed or already exists.");
+                    alert(data.error || "OTP send failed.");
                     btn.disabled = false;
-                    btn.innerText = "Verify Phone & Email";
+                    btn.innerText = "Verify Phone via OTP";
                     return;
                 }
 
@@ -331,45 +331,38 @@
                 signupData.email = email;
 
                 btn.disabled = false;
-                btn.innerText = "Verify Phone & Email";
+                btn.innerText = "Verify Phone via OTP";
                 goToStep(2);
-                alert("Verification OTPs sent successfully to your phone and email!");
+                alert("OTP sent! Dev OTP: " + (data.dev_otp || "Check console/server log"));
 
             } catch (err) {
                 console.error(err);
-                // সার্ভার অফলাইন থাকলে বা লোকাল টেবিলে ফলব্যাক হিসেবে ডেমো মোড সক্রিয় করা
-                signupData.restaurantName = name;
-                signupData.restaurantLogo = logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100";
-                signupData.phone = phone;
-                signupData.email = email;
-
+                alert("Server connection error: " + err.message);
                 btn.disabled = false;
-                btn.innerText = "Verify Phone & Email";
-                goToStep(2);
-                alert("Development Mode: OTP sent.\nDemo Phone OTP: 123456\nDemo Email OTP: 123456");
+                btn.innerText = "Verify Phone via OTP";
             }
         }
 
-        async function triggerResendOtp(type) {
+        async function triggerResendOtp() {
             try {
-                await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
+                const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: signupData.phone, email: signupData.email, type })
+                    body: JSON.stringify({ identifier: signupData.phone })
                 });
-                alert(`New ${type.toUpperCase()} OTP has been resent.`);
+                const data = await res.json();
+                alert("New OTP resent. Dev OTP: " + (data.dev_otp || ""));
             } catch (e) {
-                alert(`Resent ${type.toUpperCase()} OTP (Demo: 123456)`);
+                alert("Failed to resend OTP.");
             }
         }
 
         async function handleStep2Otp(e) {
             e.preventDefault();
-            const pOtp = document.getElementById('inputPhoneOtp').value.trim();
-            const eOtp = document.getElementById('inputEmailOtp').value.trim();
+            const otpCode = document.getElementById('inputPhoneOtp').value.trim();
 
-            if (!pOtp || !eOtp) {
-                alert("দয়া করে উভয় OTP কোড দিন!");
+            if (!otpCode) {
+                alert("দয়া করে OTP কোড দিন!");
                 return;
             }
 
@@ -381,42 +374,57 @@
                 const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: signupData.phone, email: signupData.email, phoneOtp: pOtp, emailOtp: eOtp })
+                    body: JSON.stringify({ identifier: signupData.phone, otpCode })
                 });
 
                 const data = await res.json();
-                if (!res.ok && pOtp !== "123456" && eOtp !== "123456") {
-                    alert(data.message || "Invalid OTP codes.");
+                if (!res.ok) {
+                    alert(data.error || "Invalid OTP code.");
                     btn.disabled = false;
-                    btn.innerText = "Verify Codes";
+                    btn.innerText = "Verify Code";
                     return;
                 }
 
                 btn.disabled = false;
-                btn.innerText = "Verify Codes";
+                btn.innerText = "Verify Code";
                 goToStep(3);
 
             } catch (err) {
-                // ফলব্যাক ভেরিফিকেশন ডেমো কোডের জন্য
-                if (pOtp === "123456" || pOtp === "1234" && (eOtp === "123456" || eOtp === "5678")) {
-                    btn.disabled = false;
-                    btn.innerText = "Verify Codes";
-                    goToStep(3);
-                } else {
-                    alert("OTP verification failed. (Use 123456 for demo)");
-                    btn.disabled = false;
-                    btn.innerText = "Verify Codes";
-                }
+                alert("Verification error: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "Verify Code";
             }
+        }
+
+        function handleStep3Password(e) {
+            e.preventDefault();
+            const pass = document.getElementById('regPass').value;
+            const confirmPass = document.getElementById('regConfirmPass').value;
+            const quickPin = document.getElementById('regQuickPin').value.trim();
+
+            if (pass !== confirmPass) {
+                alert("Password and Confirm Password do not match!");
+                return;
+            }
+            if (quickPin.length !== 4) {
+                alert("Quick Unlock PIN must be 4 digits!");
+                return;
+            }
+
+            signupData.password = pass;
+            signupData.quickPin = quickPin;
+            goToStep(4);
         }
 
         function selectPlanTier(plan) {
             currentSelectedPlan = plan;
+            localStorage.setItem('selectedPlan', plan);
             const plans = ['Starter', 'Professional', 'Enterprise'];
 
             plans.forEach(p => {
                 const card = document.getElementById('card' + p);
                 const label = document.getElementById('label' + p);
+                if (!card) return;
 
                 if (p === plan) {
                     card.className = "border-2 border-brand-red rounded-xl p-4 space-y-2 flex flex-col justify-between bg-white shadow-md relative cursor-pointer transition-all";
@@ -437,16 +445,12 @@
 
             const payload = {
                 restaurantName: signupData.restaurantName,
-                restaurantLogo: signupData.restaurantLogo,
                 phone: signupData.phone,
                 email: signupData.email,
-                password: document.getElementById('regPass').value,
-                quickPin: document.getElementById('regQuickPin').value.trim(),
-                plan: signupData.plan
+                password: signupData.password
             };
 
             try {
-                // PostgreSQL ব্যাকএন্ডে রেস্তোরাঁ ও অ্যাডমিন অ্যাকাউন্ট রেজিস্টার করার API কল
                 const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -455,32 +459,25 @@
 
                 const data = await res.json();
                 if (!res.ok) {
-                    alert(data.message || "Registration error occurred on server.");
+                    alert(data.error || "Registration error occurred on server.");
                     if(btn) { btn.disabled = false; btn.innerText = "Complete Registration & Launch Admin"; }
                     return;
                 }
 
-                const restaurantId = data.restaurantId;
-
-                // লোকাল স্টোরেজ ও সেশন সেটআপ
-                localStorage.setItem('CV_DEVICE_REST_ID', restaurantId);
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('restaurantId', data.restaurantId);
+                localStorage.setItem('userPlan', signupData.plan);
                 localStorage.setItem('CV_DEVICE_REST_NAME', signupData.restaurantName);
-                localStorage.setItem('CV_DEVICE_QUICK_PIN_HASH', data.quickPinHash || 'saved');
 
                 sessionStorage.setItem('CV_ADMIN_LOGGED', 'true');
-                sessionStorage.setItem('CV_LOGGED_REST_ID', restaurantId);
+                sessionStorage.setItem('CV_LOGGED_REST_ID', data.restaurantId);
 
                 goToStep(5);
 
             } catch (err) {
                 console.error(err);
-                // ব্যাকএন্ড ডাউন থাকলে লোকাল জেনারেটেড আইডি দিয়ে ফলব্যাক পাস করা
-                const fallbackId = 'REST_' + Date.now().toString(36).toUpperCase();
-                localStorage.setItem('CV_DEVICE_REST_ID', fallbackId);
-                localStorage.setItem('CV_DEVICE_REST_NAME', signupData.restaurantName);
-                sessionStorage.setItem('CV_ADMIN_LOGGED', 'true');
-                sessionStorage.setItem('CV_LOGGED_REST_ID', fallbackId);
-                goToStep(5);
+                alert("Registration failed: " + err.message);
+                if(btn) { btn.disabled = false; btn.innerText = "Complete Registration & Launch Admin"; }
             }
         }
 
@@ -488,29 +485,5 @@
             window.location.href = "admin.html";
         }
     </script>
-    <script type="module">
-    import { api } from '../api.js';
-
-    window.handleRegister = async function(event) {
-        event.preventDefault();
-        const restaurantData = {
-            restaurantName: document.getElementById('regRestName').value,
-            ownerName: document.getElementById('regOwnerName').value,
-            email: document.getElementById('regEmail').value,
-            phone: document.getElementById('regPhone').value,
-            password: document.getElementById('regPassword').value
-        };
-
-        try {
-            const res = await api.register(restaurantData);
-            if (res.success) {
-                alert("Restaurant registered successfully! Restaurant ID: " + res.restaurantId);
-                window.location.href = '../admin/index.html';
-            }
-        } catch (err) {
-            alert("Registration failed: " + err.message);
-        }
-    };
-</script>
 </body>
 </html>

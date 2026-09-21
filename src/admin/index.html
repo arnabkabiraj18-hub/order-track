@@ -403,60 +403,7 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch" id="dynamicPricingContainer">
-            
-            <!-- Starter Plan Card -->
-            <div id="mainPlanCardStarter" onclick="highlightPricingCard('Starter')" class="pricing-card bg-white rounded-2xl border-2 border-border-subtle p-6 space-y-6 flex flex-col justify-between shadow-xs cursor-pointer transition-all hover:border-brand-red/60">
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <h4 class="font-serif font-bold text-lg text-text-main">Starter</h4>
-                        <span id="badgeStarter" class="text-[10px] font-bold text-text-muted px-2 py-0.5 rounded-full bg-bg-page border">Click to Select</span>
-                    </div>
-                    <div id="starterPriceDisplay" class="font-serif font-bold text-3xl text-brand-red">₹1,999 <span class="text-xs font-sans font-normal text-text-muted">/mo</span></div>
-                    <ul id="starterFeaturesList" class="space-y-2.5 pt-3 border-t border-border-subtle text-xs text-text-muted">
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Digital QR Standees</li>
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Up to 50 Menu Items</li>
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Daily Revenue Reports</li>
-                    </ul>
-                </div>
-                <button type="button" onclick="event.stopPropagation(); proceedWithPlan('Starter')" class="w-full py-2.5 border border-brand-red text-brand-red font-semibold rounded-lg text-xs text-center hover:bg-brand-red hover:text-white transition-all">Book Starter</button>
-            </div>
-
-            <!-- Professional Plan Card -->
-            <div id="mainPlanCardProfessional" onclick="highlightPricingCard('Professional')" class="pricing-card bg-white rounded-2xl border-2 border-brand-red p-6 space-y-6 flex flex-col justify-between shadow-lg relative cursor-pointer transition-all">
-                <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-red text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">Most Popular</span>
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <h4 class="font-serif font-bold text-lg text-text-main">Professional</h4>
-                        <span id="badgeProfessional" class="text-[10px] font-bold text-brand-red px-2 py-0.5 rounded-full bg-red-50 border border-red-200">Selected</span>
-                    </div>
-                    <div id="proPriceDisplay" class="font-serif font-bold text-3xl text-brand-red">₹4,999 <span class="text-xs font-sans font-normal text-text-muted">/mo</span></div>
-                    <ul id="proFeaturesList" class="space-y-2.5 pt-3 border-t border-border-subtle text-xs text-text-main font-medium">
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Unlimited Menu & Modifiers</li>
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> 360° Floor Heatmap Radar</li>
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> 15 Waiter + 4 KDS Terminals</li>
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> 24/7 Priority Emergency Support</li>
-                    </ul>
-                </div>
-                <button type="button" onclick="event.stopPropagation(); proceedWithPlan('Professional')" class="w-full py-2.5 bg-brand-red hover:bg-brand-red-hover text-white font-bold rounded-lg text-xs text-center shadow-sm transition-colors">Book Professional</button>
-            </div>
-
-            <!-- Enterprise Plan Card -->
-            <div id="mainPlanCardEnterprise" onclick="highlightPricingCard('Enterprise')" class="pricing-card bg-white rounded-2xl border-2 border-border-subtle p-6 space-y-6 flex flex-col justify-between shadow-xs cursor-pointer transition-all hover:border-brand-red/60">
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <h4 class="font-serif font-bold text-lg text-text-main">Enterprise</h4>
-                        <span id="badgeEnterprise" class="text-[10px] font-bold text-text-muted px-2 py-0.5 rounded-full bg-bg-page border">Click to Select</span>
-                    </div>
-                    <div id="enterprisePriceDisplay" class="font-serif font-bold text-3xl text-text-main">Custom</div>
-                    <ul id="enterpriseFeaturesList" class="space-y-2.5 pt-3 border-t border-border-subtle text-xs text-text-muted">
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Multi-Branch Central Ledger</li>
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Custom ERP & Tally Bridge</li>
-                        <li class="flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-sm">check</span> Dedicated Operations Manager</li>
-                    </ul>
-                </div>
-                <button type="button" onclick="event.stopPropagation(); proceedWithPlan('Enterprise')" class="w-full py-2.5 border border-border-subtle hover:border-brand-red text-text-main font-semibold rounded-lg text-xs text-center transition-colors">Contact Sales</button>
-            </div>
-
+            <p class="text-center col-span-3 text-text-muted py-8">Loading live plans...</p>
         </div>
     </section>
 
@@ -795,5 +742,40 @@
             document.getElementById('infoContentModal').classList.remove('flex');
         }
     </script>
+    <script>
+    async function loadDynamicPricing() {
+    try {
+        const container = document.getElementById('dynamicPricingContainer');
+        if (!container) return;
+
+        const res = await fetch('https://order-track-qibw.onrender.com/api/public/plans');
+        const data = await res.json();
+
+        if (data.success && data.plans.length > 0) {
+            container.innerHTML = data.plans.map(plan => `
+                <div class="pricing-card bg-white p-6 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-900">${plan.plan_name}</h3>
+                        <div class="text-3xl font-extrabold text-blue-600 my-4">
+                            ₹${plan.price} <span class="text-sm font-normal text-gray-500">/year</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">${plan.description || ''}</p>
+                        <ul class="text-sm text-gray-600 space-y-2 mb-6">
+                            <li>👥 Max Staff: <b>${plan.max_staff}</b></li>
+                            <li>⏳ Validity: <b>${plan.duration_days} Days</b></li>
+                        </ul>
+                    </div>
+                    <button onclick="handlePlanSelection('${plan.plan_name}')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">
+                        Select ${plan.plan_name}
+                    </button>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        console.error('Dynamic pricing load failed:', err);
+    }
+}
+document.addEventListener('DOMContentLoaded', loadDynamicPricing);
+</script>
 </body>
 </html>

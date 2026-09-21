@@ -14,28 +14,27 @@ const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 const pool = require('./db');
 
 const app = express();
-const path = require('path');
 
-// এক ধাপ উপরে (মূল রুট ফোল্ডার থেকে) স্ট্যাটিক ফাইল সার্ভ করার জন্য
+// স্ট্যাটিক ফাইল ও রুট রাউট
 app.use(express.static(path.join(__dirname, '../')));
-
-// মূল রুট (/) এ গেলে সঠিক path থেকে index.html দেখাবে
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../src/admin/index.html'));
 });
+
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: "*" }
+    cors: { origin: ["http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500", "https://order-track-qibw.onrender.com"] }
 });
 
 // ================= ADVANCED FIREWALL & HARDENING =================
 app.use(helmet());
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:5500'],
+    origin: ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:5500', 'https://order-track-qibw.onrender.com'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true
 }));
@@ -51,7 +50,7 @@ app.use('/api/', globalLimiter);
 
 const authLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
-    max: 20,
+    max: 50,
     message: { error: "Security Alert: Too many login or OTP attempts. Please wait 10 minutes." }
 });
 app.use('/api/auth/', authLimiter);
@@ -59,7 +58,7 @@ app.use('/api/auth/', authLimiter);
 // ================= AUTHENTICATION MIDDLEWARE =================
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader && authHeader.split(' ')[1]; // Fixed token index
     if (!token) return res.status(401).json({ error: "Access token missing!" });
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ error: "Invalid or expired token!" });
@@ -68,10 +67,49 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// ================= SUBSCRIPTION VERIFICATION MIDDLEWARE =================
+const verifySubscription = async (req, res, next) => {
+    try {
+        const restaurant_id = req.body.restaurant_id || req.headers['x-restaurant-id'] || req.query.restaurant_id || req.params.restaurantId;
+        if (!restaurant_id) {
+            return res.status(400).json({ error: "Restaurant ID is required for verification." });
+        }
+        const result = await pool.query(
+            "SELECT subscription_status, plan_expires_at, assigned_plan FROM restaurants WHERE id = $1",
+            [restaurant_id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Restaurant not found." });
+        }
+        const restaurant = result.rows[0];
+        const now = new Date();
+        const expiresAt = new Date(restaurant.plan_expires_at);
+
+        if (restaurant.subscription_status !== 'ACTIVE' || expiresAt < now) {
+            return res.status(403).json({ 
+                error: "Your subscription has expired or is inactive. Please renew your plan." 
+            });
+        }
+        req.assignedPlan = restaurant.assigned_plan;
+        next();
+    } catch (err) {
+        console.error("Subscription Verification Error:", err);
+        res.status(500).json({ error: "Internal server error during subscription check." });
+    }
+};
+
 // ================= ENTERPRISE DB TABLES & PERFORMANCE INDEXING =================
 async function initOrderTrackEnterpriseDB() {
     try {
         await pool.query(`
+            CREATE TABLE IF NOT EXISTS subscription_plans (
+                plan_name VARCHAR(100) PRIMARY KEY,
+                price NUMERIC(10,2) DEFAULT 0,
+                duration_days INT DEFAULT 365,
+                max_staff INT DEFAULT 5,
+                description TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS restaurants (
                 id VARCHAR(64) PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -171,22 +209,32 @@ async function initOrderTrackEnterpriseDB() {
             CREATE INDEX IF NOT EXISTS idx_devices_uuid ON authorized_devices(device_uuid);
             CREATE INDEX IF NOT EXISTS idx_orders_resto ON orders(restaurant_id);
         `);
-        console.log("✅ All Enterprise Tables & High-Scale Indexes Verified Successfully!");
+
+        // ডিফল্ট প্ল্যান সিড করা (না থাকলে)
+        await pool.query(`
+            INSERT INTO subscription_plans (plan_name, price, duration_days, max_staff, description)
+            VALUES 
+            ('Starter', 399.00, 365, 5, 'Digital QR Standees, Up to 50 Menu Items, Daily Revenue Reports'),
+            ('Professional', 999.00, 365, 15, 'Unlimited Menu & Modifiers, 360° Floor Heatmap Radar, 15 Waiter + 4 KDS Terminals, 24/7 Priority Emergency Support'),
+            ('Enterprise', 2999.00, 365, 50, 'Multi-Branch Central Ledger, Custom ERP & Tally Bridge, Dedicated Operations Manager')
+            ON CONFLICT (plan_name) DO NOTHING;
+        `);
+
+        console.log("✅ All Enterprise Tables, Indexes & Seed Plans Verified Successfully!");
     } catch (e) {
         console.error("Database initialization error:", e.message);
     }
 }
 initOrderTrackEnterpriseDB();
 
-// ================= AUTHENTICATION & OTP APIS =================
-
+// ================= AUTHENTICATION & OTP APIS (DEV & PRODUCTION READY) =================
 app.post('/api/auth/send-otp', async (req, res) => {
     const identifier = req.body.identifier?.trim();
     if (!identifier) return res.status(400).json({ error: "Phone number or email is required!" });
 
     try {
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
         await pool.query(
             `INSERT INTO phone_otps (identifier, otp_code, expires_at, verified)
@@ -195,25 +243,32 @@ app.post('/api/auth/send-otp', async (req, res) => {
             [identifier, otpCode, expiresAt]
         );
 
-        // আসল এসএমএস গেটওয়ে এপিআই কল:
-        try {
-            const axios = require('axios');
-            await axios.get(`https://www.fast2sms.com/dev/bulkV2`, {
-                params: {
-                    authorization: process.env.SMS_API_KEY, // এটি রেন্ডারের এনভায়রনমেন্টে সেভ করতে হবে
-                    route: 'q',
-                    message: `Your OrderSync OTP is ${otpCode}. Valid for 5 minutes.`,
-                    language: 'english',
-                    flash: 0,
-                    numbers: identifier
-                }
-            });
-            console.log(`📱 SMS Sent successfully to ${identifier}`);
-        } catch (smsErr) {
-            console.error("❌ SMS API Error:", smsErr.message);
+        console.log(`📱 [TEST/DEV OTP] Identifier: ${identifier} -> OTP: ${otpCode}`);
+
+        if (process.env.SMS_API_KEY) {
+            try {
+                const axios = require('axios');
+                await axios.get(`https://www.fast2sms.com/dev/bulkV2`, {
+                    params: {
+                        authorization: process.env.SMS_API_KEY,
+                        route: 'q',
+                        message: `Your OrderSync OTP is ${otpCode}. Valid for 10 minutes.`,
+                        language: 'english',
+                        flash: 0,
+                        numbers: identifier
+                    }
+                });
+                console.log(`📱 SMS Sent successfully to ${identifier}`);
+            } catch (smsErr) {
+                console.warn("⚠️ SMS Gateway Warning (falling back to dev response):", smsErr.message);
+            }
         }
         
-        res.json({ success: true, message: "OTP sent successfully." });
+        res.json({ 
+            success: true, 
+            message: "OTP sent successfully.",
+            dev_otp: otpCode // টেস্টিং ও ইনস্ট্যান্ট ভেরিফিকেশনের জন্য
+        });
     } catch (err) {
         console.error("❌ Send OTP Error:", err.message);
         res.status(500).json({ error: "Internal Security Error." });
@@ -245,50 +300,24 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     }
 });
 
-
-// =========================================================================
-// SUBSCRIPTION & SUPER ADMIN APIS
-// =========================================================================
-
-// ১. সাবস্ক্রিপশন চেক করার মিডওয়্যার (প্রটেক্টেড রাউটে ব্যবহার করার জন্য)
-const verifySubscription = async (req, res, next) => {
+// ================= PUBLIC PLANS API =================
+app.get('/api/public/plans', async (req, res) => {
     try {
-        const restaurant_id = req.body.restaurant_id || req.headers['x-restaurant-id'] || req.query.restaurant_id;
-        if (!restaurant_id) {
-            return res.status(400).json({ error: "Restaurant ID is required for verification." });
-        }
-        const result = await pool.query(
-            "SELECT subscription_status, plan_expires_at, assigned_plan FROM restaurants WHERE id = $1",
-            [restaurant_id]
-        );
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: "Restaurant not found." });
-        }
-        const restaurant = result.rows[0];
-        const now = new Date();
-        const expiresAt = new Date(restaurant.plan_expires_at);
-
-        if (restaurant.subscription_status !== 'ACTIVE' || expiresAt < now) {
-            return res.status(403).json({ 
-                error: "Your subscription has expired or is inactive. Please renew your plan." 
-            });
-        }
-        req.assignedPlan = restaurant.assigned_plan;
-        next();
+        const result = await pool.query("SELECT * FROM subscription_plans ORDER BY price ASC");
+        res.json({ success: true, plans: result.rows });
     } catch (err) {
-        console.error("Subscription Verification Error:", err);
-        res.status(500).json({ error: "Internal server error during subscription check." });
+        res.status(500).json({ error: "Failed to fetch public plans" });
     }
-};
+});
 
-// ২. নতুন রেস্টুরেন্ট রেজিস্ট্রেশন (অটোমেটিক ১৪ দিনের ফ্রি ট্রায়াল)
+// ================= SUBSCRIPTION & SUPER ADMIN APIS =================
 app.post('/api/restaurant/register', async (req, res) => {
     try {
         const { id, name, phone, email } = req.body;
         if (!id || !name || !phone || !email) {
             return res.status(400).json({ error: "All fields are required." });
         }
-        const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // ১৪ দিন ফ্রি ট্রায়াল
+        const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
         await pool.query(
             `INSERT INTO restaurants (id, name, phone, email, assigned_plan, subscription_status, plan_expires_at) 
@@ -311,11 +340,9 @@ app.post('/api/restaurant/register', async (req, res) => {
     }
 });
 
-// ৩. সুপার অ্যাডমিন: যেকোনো রেস্টুরেন্টের প্ল্যান/মেয়াদ ফিক্স বা আপডেট করা
 app.post('/api/admin/update-subscription', async (req, res) => {
     try {
         const { admin_secret, restaurant_id, assigned_plan, plan_expires_at, subscription_status } = req.body;
-        
         if (admin_secret !== process.env.SUPER_ADMIN_SECRET) {
             return res.status(403).json({ error: "Unauthorized Super Admin Action!" });
         }
@@ -339,7 +366,6 @@ app.post('/api/admin/update-subscription', async (req, res) => {
     }
 });
 
-// ৪. সুপার অ্যাডমিন: প্ল্যানের লিস্ট দেখা
 app.get('/api/admin/plans', async (req, res) => {
     try {
         const result = await pool.query("SELECT * FROM subscription_plans ORDER BY price ASC");
@@ -349,7 +375,6 @@ app.get('/api/admin/plans', async (req, res) => {
     }
 });
 
-// ৫. সুপার অ্যাডমিন: নতুন প্ল্যান বা স্পেশ্যাল প্রাইস তৈরি/আপডেট করা
 app.post('/api/admin/plans', async (req, res) => {
     try {
         const { admin_secret, plan_name, price, duration_days, max_staff, description } = req.body;
@@ -359,7 +384,7 @@ app.post('/api/admin/plans', async (req, res) => {
         await pool.query(
             `INSERT INTO subscription_plans (plan_name, price, duration_days, max_staff, description)
              VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (plan_name) DO UPDATE SET price = $2, duration_days = $3, max_staff = $4, description = $5`,
+             ON CONFLICT (plan_name) DO UPDATE SET price = EXCLUDED.price, duration_days = EXCLUDED.duration_days, max_staff = EXCLUDED.max_staff, description = EXCLUDED.description`,
             [plan_name, price, duration_days, max_staff, description]
         );
         res.json({ success: true, message: "Subscription plan saved/updated successfully!" });
@@ -369,7 +394,6 @@ app.post('/api/admin/plans', async (req, res) => {
     }
 });
 
-// --- SUPER ADMIN CORE MANAGEMENT APIS FOR super-admin.html ---
 const verifySuperAdmin = (req, res, next) => {
     const adminSecret = req.headers['x-admin-secret'] || req.body.admin_secret;
     if (!adminSecret || adminSecret !== process.env.SUPER_ADMIN_SECRET) {
@@ -426,15 +450,12 @@ app.post('/api/admin/restaurant-status', verifySuperAdmin, async (req, res) => {
     }
 });
 
-
-
+// ================= AUTHENTICATION LOGIN & REGISTER =================
 app.post('/api/auth/register', async (req, res) => {
     const restaurantName = req.body.restaurantName?.trim();
     const phone = req.body.phone?.trim();
     const email = req.body.email?.trim().toLowerCase();
     const password = req.body.password;
-
-    console.log("📥 Incoming Register Request:", { restaurantName, phone, email });
 
     if (!restaurantName || !phone || !email || !password) {
         return res.status(400).json({ error: "All fields are required!" });
@@ -462,11 +483,12 @@ app.post('/api/auth/register', async (req, res) => {
         const restaurantId = 'REST_' + Date.now().toString(36);
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
+        const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
         await client.query(
-            `INSERT INTO restaurants (id, name, phone, email, subscription_status)
-             VALUES ($1, $2, $3, $4, 'ACTIVE')`,
-            [restaurantId, restaurantName, phone, email]
+            `INSERT INTO restaurants (id, name, phone, email, subscription_status, assigned_plan, plan_expires_at)
+             VALUES ($1, $2, $3, $4, 'ACTIVE', 'Free Trial', $5)`,
+            [restaurantId, restaurantName, phone, email, trialExpiresAt]
         );
 
         await client.query(
@@ -485,7 +507,7 @@ app.post('/api/auth/register', async (req, res) => {
         );
 
         console.log(`🎉 Registration Successful for Restaurant ID: ${restaurantId}`);
-        res.status(201).json({ success: true, token, restaurantId, message: "Registration successful!" });
+        res.status(201).json({ success: true, token, restaurantId, message: "Registration successful with 14-day trial!" });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error("❌ Register Error Details:", err.message);
@@ -531,7 +553,6 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ================= PUBLIC QR MENU & ORDERING APIS =================
-
 app.get('/api/public/menu/:restaurantId', async (req, res) => {
     try {
         const result = await pool.query("SELECT * FROM menu_items WHERE restaurant_id = $1 AND available = TRUE ORDER BY category, id", [req.params.restaurantId]);
@@ -566,9 +587,8 @@ app.post('/api/public/orders', async (req, res) => {
     }
 });
 
-// ================= KITCHEN MODULE APIS =================
-
-app.get('/api/kitchen/orders/:restaurantId', async (req, res) => {
+// ================= KITCHEN MODULE APIS (Protected with Subscription Guard) =================
+app.get('/api/kitchen/orders/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
         const result = await pool.query(
@@ -582,7 +602,7 @@ app.get('/api/kitchen/orders/:restaurantId', async (req, res) => {
     }
 });
 
-app.patch('/api/kitchen/order-status', async (req, res) => {
+app.patch('/api/kitchen/order-status', verifySubscription, async (req, res) => {
     try {
         const { orderId, status } = req.body;
         if (!orderId || !status) {
@@ -596,9 +616,8 @@ app.patch('/api/kitchen/order-status', async (req, res) => {
     }
 });
 
-// ================= ADMIN MODULE APIS =================
-
-app.get('/api/admin/menu/:restaurantId', async (req, res) => {
+// ================= ADMIN MODULE APIS (Protected with Subscription Guard where applicable) =================
+app.get('/api/admin/menu/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
         const result = await pool.query("SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY id DESC", [restaurantId]);
@@ -609,7 +628,7 @@ app.get('/api/admin/menu/:restaurantId', async (req, res) => {
     }
 });
 
-app.post('/api/admin/menu', async (req, res) => {
+app.post('/api/admin/menu', verifySubscription, async (req, res) => {
     try {
         const { restaurantId, name, category, price, isAvailable } = req.body;
         if (!restaurantId || !name || !category || price === undefined) {
@@ -631,12 +650,12 @@ app.put('/api/admin/menu/:itemId', async (req, res) => {
     try {
         const { itemId } = req.params;
         const { name, category, price, available } = req.body;
-        const result = await pool.query(
+        const queryRes = await pool.query(
             `UPDATE menu_items SET name = COALESCE($1, name), category = COALESCE($2, category), 
              price = COALESCE($3, price), available = COALESCE($4, available) WHERE id = $5 RETURNING *`,
             [name, category, price, available, itemId]
         );
-        res.json({ success: true, item: result.rows[0] });
+        res.json({ success: true, item: queryRes.rows[0] });
     } catch (err) {
         console.error("❌ Update Menu Item Error:", err.message);
         res.status(500).json({ error: "Failed to update menu item." });
@@ -654,15 +673,15 @@ app.delete('/api/admin/menu/:itemId', async (req, res) => {
     }
 });
 
-app.get('/api/admin/stats/:restaurantId', async (req, res) => {
+app.get('/api/admin/stats/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
-        const salesRes = await pool.query("SELECT SUM(grand_total) as total_sales FROM sales_invoices WHERE restaurant_id = $1", [restaurantId]);
+        const salesRes = await pool.query("SELECT COALESCE(SUM(grand_total), 0) as total_sales FROM sales_invoices WHERE restaurant_id = $1", [restaurantId]);
         const ordersRes = await pool.query("SELECT COUNT(*) as total_orders FROM orders WHERE restaurant_id = $1", [restaurantId]);
         res.json({
             success: true,
-            totalSales: salesRes.rows[0].total_sales || 0,
-            totalOrders: ordersRes.rows[0].total_orders || 0
+            totalSales: parseFloat(salesRes.rows[0].total_sales || 0),
+            totalOrders: parseInt(ordersRes.rows[0].total_orders || 0)
         });
     } catch (err) {
         console.error("❌ Admin Stats Error:", err.message);
@@ -670,9 +689,8 @@ app.get('/api/admin/stats/:restaurantId', async (req, res) => {
     }
 });
 
-// ================= BILLING MODULE APIS =================
-
-app.get('/api/billing/orders/:restaurantId', async (req, res) => {
+// ================= BILLING MODULE APIS (Protected with Subscription Guard) =================
+app.get('/api/billing/orders/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
         const result = await pool.query("SELECT * FROM orders WHERE restaurant_id = $1 AND payment = 'Unpaid' ORDER BY created_at DESC", [restaurantId]);
@@ -683,7 +701,7 @@ app.get('/api/billing/orders/:restaurantId', async (req, res) => {
     }
 });
 
-app.post('/api/billing/checkout', async (req, res) => {
+app.post('/api/billing/checkout', verifySubscription, async (req, res) => {
     try {
         const { orderId, amount, paymentMethod } = req.body;
         if (!orderId || !amount) {
@@ -710,9 +728,8 @@ app.post('/api/billing/checkout', async (req, res) => {
     }
 });
 
-// ================= WAITER MODULE APIS =================
-
-app.post('/api/waiter/orders', async (req, res) => {
+// ================= WAITER MODULE APIS (Protected with Subscription Guard) =================
+app.post('/api/waiter/orders', verifySubscription, async (req, res) => {
     try {
         const { restaurantId, tableNo, items } = req.body;
         if (!restaurantId || !tableNo || !items) {
@@ -743,20 +760,24 @@ io.on('connection', (socket) => {
         socket.join(`resto_${restaurantId}`);
     });
 });
-const { createClient } = require('redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
 
-// Redis ক্লায়েন্ট তৈরি (Render বা ক্লাউড এনভায়রনমেন্ট থেকে REDIS_URL নেবে)
-const pubClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
-const subClient = pubClient.duplicate();
+if (process.env.REDIS_URL || process.env.USE_REDIS === 'true') {
+    try {
+        const { createClient } = require('redis');
+        const { createAdapter } = require('@socket.io/redis-adapter');
+        const pubClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+        const subClient = pubClient.duplicate();
 
-// কানেক্ট করার পর Socket.io-এ এডাপ্টার সেটআপ করা
-Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-    io.adapter(createAdapter(pubClient, subClient));
-    console.log("⚡ Socket.io Redis Adapter Connected Successfully!");
-}).catch(err => {
-    console.error("❌ Redis Adapter Connection Error:", err);
-});
+        Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+            io.adapter(createAdapter(pubClient, subClient));
+            console.log("⚡ Socket.io Redis Adapter Connected Successfully!");
+        }).catch(err => {
+            console.warn("⚠️ Redis Adapter Connection Failed, continuing with local socket.io:", err.message);
+        });
+    } catch (rErr) {
+        console.warn("⚠️ Redis module/setup warning:", rErr.message);
+    }
+}
 
 // ================= PRODUCTION ERROR MASKING MIDDLEWARE =================
 app.use((err, req, res, next) => {

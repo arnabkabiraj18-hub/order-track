@@ -2464,5 +2464,42 @@
 
     loadAdminDashboard();
 </script>
+<script>
+const PLAN_PERMISSIONS = {
+    'Free Trial': ['POS', 'Menu', 'Billing'],
+    'Starter': ['POS', 'Menu', 'Billing', 'QR Ordering', 'Waiter'],
+    'Professional': ['POS', 'Menu', 'Billing', 'QR Ordering', 'Waiter', 'KDS', 'Heatmap'],
+    'Enterprise': ['POS', 'Menu', 'Billing', 'QR Ordering', 'Waiter', 'KDS', 'Heatmap', 'Multi-Branch']
+};
+
+function hasAccess(featureName, userPlan = 'Free Trial') {
+    const allowedFeatures = PLAN_PERMISSIONS[userPlan] || [];
+    return allowedFeatures.includes(featureName);
+}
+
+function enforceFeatureGating(userPlan) {
+    document.querySelectorAll('[data-feature]').forEach(el => {
+        const feature = el.getAttribute('data-feature');
+        if (!hasAccess(feature, userPlan)) {
+            el.classList.add('opacity-50', 'pointer-events-none', 'relative', 'cursor-not-allowed');
+            el.title = `Upgrade to unlock ${feature}`;
+            el.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                alert(`🔒 ${feature} ফিচারটি ব্যবহার করতে আপনার প্ল্যান আপগ্রেড করুন!`);
+            };
+        } else {
+            el.classList.remove('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+            el.title = '';
+            el.onclick = null;
+        }
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const userPlan = localStorage.getItem('userPlan') || 'Free Trial';
+    enforceFeatureGating(userPlan);
+});
+</script>
 </body>
 </html>
