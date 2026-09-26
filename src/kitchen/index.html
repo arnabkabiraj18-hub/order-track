@@ -4,6 +4,11 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <title>Kitchen Display - Smart KDS Terminal</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#7f1d1d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <!-- PWA Web App Manifest & Meta Tags -->
     <link rel="manifest" href="manifest.json">
@@ -625,6 +630,37 @@
     // প্রতি ৫ সেকেন্ড পর পর পেজ রিফ্রেশ না করে অটো লাইভ অর্ডার ফেচ করা
     setInterval(loadKitchenOrders, 5000);
     loadKitchenOrders();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(() => {
+        console.log('PWA Service Worker Registered');
+    });
+}
+</script>
+
+<!-- Socket.io CDN -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+    const appSocket = io('https://order-track-qibw.onrender.com', {
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000
+    });
+
+    appSocket.on('connect', () => {
+        console.log('✅ রিয়েল-টাইম সার্ভারের সাথে সংযুক্ত!');
+        const restId = localStorage.getItem('restaurantId');
+        if (restId) appSocket.emit('join_restaurant', restId);
+    });
+
+    appSocket.on('disconnect', (reason) => {
+        console.warn('⚠️ ইন্টারনেট কানেকশন স্লো বা বিচ্ছিন্ন: ', reason);
+    });
 </script>
 </body>
 </html>

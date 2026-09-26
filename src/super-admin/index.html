@@ -17,8 +17,8 @@
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#b7122a",
-                        "primary-hover": "#8e0e20",
+                        "primary": "#7f1d1d",
+                        "primary-hover": "#5a1414",
                         "secondary": "#006c4f",
                         "surface": "#f8f9fa",
                         "dark-slate": "#0f172a"
@@ -36,8 +36,6 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-
-    
 </head>
 <body class="bg-surface text-gray-900 font-body min-h-screen antialiased select-none">
 
@@ -77,21 +75,11 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="switchTab('analytics')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all" data-target="analyticsTab">
-                    Overview
-                </button>
-                <button onclick="switchTab('clients')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="clientsTab">
-                    Subscribers (<span id="tabClientCount">0</span>)
-                </button>
-                <button onclick="switchTab('plans')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="plansTab">
-                    Plans & Bank
-                </button>
-                <button onclick="switchTab('websiteCms')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="websiteCmsTab">
-                    Landing CMS
-                </button>
-                <button onclick="switchTab('tickets')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" data-target="ticketsTab">
-                    Helpdesk (<span id="tabTicketCount">0</span>)
-                </button>
+                <button onclick="switchTab('analytics')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all">Overview</button>
+                <button onclick="switchTab('clients')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all">Subscribers (<span id="tabClientCount">0</span>)</button>
+                <button onclick="switchTab('plans')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all">Plans & Bank</button>
+                <button onclick="switchTab('websiteCms')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all">Landing CMS</button>
+                <button onclick="switchTab('tickets')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all">Helpdesk (<span id="tabTicketCount">0</span>)</button>
             </div>
         </header>
 
@@ -150,11 +138,11 @@
                 <!-- URGENT RENEWALS & ALERTS -->
                 <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
                     <div class="flex justify-between items-center">
-                        <h3 class="font-display font-bold text-base text-gray-900">Urgent Renewal Actions & WhatsApp Alerts</h3>
-                        <span class="text-xs text-gray-400">মেয়াদ শেষ হতে চলা বা পেমেন্ট ফেল হওয়া রেস্তোরাঁ</span>
+                        <h3 class="font-display font-bold text-base text-gray-900">Urgent Renewal Actions & Payment Tracking</h3>
+                        <span class="text-xs text-gray-400">মেয়াদ শেষ হওয়া বা পেমেন্ট ফেল হওয়া রেস্তোরাঁ</span>
                     </div>
                     <div id="urgentRenewalList" class="space-y-2.5 text-xs">
-                        <p class="text-gray-400 py-4 text-center">বর্তমানে কোনো জরুরি রিনিউয়াল বাকি নেই।</p>
+                        <p class="text-gray-400 py-4 text-center">কোনো জরুরি রিনিউয়াল বাকি নেই।</p>
                     </div>
                 </div>
             </section>
@@ -165,12 +153,12 @@
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                         <div>
                             <h3 class="font-display font-bold text-base text-gray-900">Subscribed Restaurant Directory</h3>
-                            <p class="text-xs text-gray-500">সমস্ত রেস্তোরাঁর ডাটা, সাবস্ক্রিপশন প্ল্যান, পেমেন্ট স্ট্যাটাস ও রিনিউয়াল</p>
+                            <p class="text-xs text-gray-500">সমস্ত রেস্তোরাঁর ডাটা, সাবস্ক্রিপশন প্ল্যান, পেমেন্ট স্ট্যাটাস ও রিনিউয়াল হ্যান্ডেলিং</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <input type="text" id="clientSearchInput" onkeyup="filterClients()" placeholder="Search by name, owner, phone..." class="px-4 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:border-primary w-64">
-                            <button onclick="openNewClientModal()" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
-                                <span class="material-symbols-outlined text-sm">add_business</span> Add Client
+                            <input type="text" id="clientSearchInput" onkeyup="filterClients()" placeholder="Search by name, phone..." class="px-4 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:border-primary w-64">
+                            <button onclick="openClientModal()" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
+                                <span class="material-symbols-outlined text-sm">add_business</span> Add / Edit Client
                             </button>
                         </div>
                     </div>
@@ -180,11 +168,11 @@
                             <thead class="bg-gray-50 uppercase text-[10px] text-gray-500 border-b border-gray-200">
                                 <tr>
                                     <th class="py-3 px-4">Restaurant / Outlet</th>
-                                    <th class="py-3 px-4">Owner Info</th>
+                                    <th class="py-3 px-4">Contact Info</th>
                                     <th class="py-3 px-4">Current Plan</th>
                                     <th class="py-3 px-4">Expiry Date</th>
                                     <th class="py-3 px-4">Status & Payment</th>
-                                    <th class="py-3 px-4 text-right">Actions</th>
+                                    <th class="py-3 px-4 text-right">Actions (Renew/Fix)</th>
                                 </tr>
                             </thead>
                             <tbody id="clientsTableBody" class="divide-y divide-gray-100 font-medium"></tbody>
@@ -202,14 +190,14 @@
                             <span class="material-symbols-outlined">account_balance</span>
                         </div>
                         <div>
-                            <h3 class="font-display font-bold text-sm text-gray-900">Platform Subscription Payout Bank & UPI</h3>
-                            <p class="text-[11px] text-gray-500">গ্রাহকের সাবস্ক্রিপশন ফি সরাসরি এই ব্যাংক অ্যাকাউন্টে বা ইউপিআই-তে জমা হবে</p>
+                            <h3 class="font-display font-bold text-sm text-gray-900">Direct Payment Gateway & Bank Account (আপনার ব্যাংক অ্যাকাউন্টে টাকা আসার ব্যবস্থা)</h3>
+                            <p class="text-[11px] text-gray-500">গ্রাহক সাবস্ক্রিপশন ফি দিলে সরাসরি এই অ্যাকাউন্টে বা UPI-তে জমা হবে</p>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                         <div>
-                            <label class="font-bold text-gray-700 block mb-1">Super Admin UPI ID (for QR):</label>
+                            <label class="font-bold text-gray-700 block mb-1">Super Admin UPI ID (পেমেন্ট নেওয়ার জন্য):</label>
                             <input type="text" id="cfgAdminUpi" placeholder="yourcompany@okaxis" class="w-full px-3 py-2 border rounded-xl outline-none font-bold text-primary">
                         </div>
                         <div>
@@ -225,7 +213,7 @@
                             <input type="text" id="cfgAdminIfsc" placeholder="HDFC0001234" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
                         </div>
                         <div>
-                            <label class="font-bold text-gray-700 block mb-1">Razorpay Key ID (Online Gateway):</label>
+                            <label class="font-bold text-gray-700 block mb-1">Razorpay / Gateway Key ID:</label>
                             <input type="text" id="cfgAdminRzpKey" placeholder="rzp_live_xxxxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
                         </div>
                         <div>
@@ -248,38 +236,35 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-                        <!-- Starter Plan -->
                         <div class="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
                             <span class="font-extrabold text-gray-600 uppercase text-[10px] tracking-wider block">Package Tier 1</span>
                             <input type="text" id="p1Name" value="Starter" class="w-full px-3 py-2 border rounded-xl font-bold bg-white outline-none">
-                            <input type="text" id="p1Price" value="1,999" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none" placeholder="1999">
-                            <label class="block font-bold text-gray-600 text-[10px]">Features (Comma separated or new line):</label>
-                            <textarea id="p1Features" rows="4" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Digital QR Standees, Up to 50 Menu Items, Daily Revenue Reports</textarea>
+                            <input type="text" id="p1Price" value="399" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none">
+                            <label class="block font-bold text-gray-600 text-[10px]">Features:</label>
+                            <textarea id="p1Features" rows="3" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Digital QR Standees, Up to 50 Menu Items, Daily Revenue Reports</textarea>
                         </div>
 
-                        <!-- Pro Plan -->
                         <div class="p-5 rounded-2xl bg-red-50/50 border-2 border-primary/40 space-y-3 relative">
                             <span class="absolute top-3 right-3 px-2 py-0.5 rounded bg-primary text-white text-[9px] font-bold">Most Popular</span>
                             <span class="font-extrabold text-primary uppercase text-[10px] tracking-wider block">Package Tier 2</span>
                             <input type="text" id="p2Name" value="Professional" class="w-full px-3 py-2 border rounded-xl font-bold bg-white outline-none">
-                            <input type="text" id="p2Price" value="4,999" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none" placeholder="4999">
+                            <input type="text" id="p2Price" value="999" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none">
                             <label class="block font-bold text-gray-600 text-[10px]">Features:</label>
-                            <textarea id="p2Features" rows="4" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Unlimited Menu & Modifiers, 360° Floor Heatmap Radar, 15 Waiter + 4 KDS Terminals, 24/7 Priority Emergency Support</textarea>
+                            <textarea id="p2Features" rows="3" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Unlimited Menu & Modifiers, 360° Floor Heatmap Radar, 15 Waiter + 4 KDS Terminals</textarea>
                         </div>
 
-                        <!-- Enterprise Plan -->
                         <div class="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
                             <span class="font-extrabold text-gray-600 uppercase text-[10px] tracking-wider block">Package Tier 3</span>
                             <input type="text" id="p3Name" value="Enterprise" class="w-full px-3 py-2 border rounded-xl font-bold bg-white outline-none">
-                            <input type="text" id="p3Price" value="Custom" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none" placeholder="Custom">
+                            <input type="text" id="p3Price" value="2999" class="w-full px-3 py-2 border rounded-xl font-extrabold text-primary bg-white outline-none">
                             <label class="block font-bold text-gray-600 text-[10px]">Features:</label>
-                            <textarea id="p3Features" rows="4" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Multi-Branch Central Ledger, Custom ERP & Tally Bridge, Dedicated Operations Manager</textarea>
+                            <textarea id="p3Features" rows="3" class="w-full px-3 py-2 border rounded-xl bg-white outline-none resize-none">Multi-Branch Central Ledger, Custom ERP & Tally Bridge, Dedicated Manager</textarea>
                         </div>
                     </div>
 
                     <div class="text-right pt-2">
                         <button onclick="savePlansAndBank()" class="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold shadow-md transition-all">
-                            Save & Sync Plans to Homepage
+                            Save & Sync Plans
                         </button>
                     </div>
                 </div>
@@ -293,31 +278,31 @@
                             <span class="material-symbols-outlined">palette</span>
                         </div>
                         <div>
-                            <h3 class="font-display font-bold text-sm text-gray-900">OrderTrack Website Identity & Front CMS</h3>
-                            <p class="text-[11px] text-gray-500">আপনার মূল হোমপেজের লোগো, ব্র্যান্ড নেম, অ্যাবাউট আস, প্রাইভেসি ও টার্মস নিয়ন্ত্রণ</p>
+                            <h3 class="font-display font-bold text-sm text-gray-900">OrderTrack Website Identity, About & CMS</h3>
+                            <p class="text-[11px] text-gray-500">আপনার মূল হোমপেজের লোগো, ব্র্যান্ড নেম, অ্যাবাউট আস, প্রাইভেসি ও টার্মস কাস্টমাইজ করুন</p>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                         <div>
-                            <label class="font-bold text-gray-700 block mb-1">Website Brand Name (লোগো ও নাম):</label>
+                            <label class="font-bold text-gray-700 block mb-1">Website Brand Name:</label>
                             <input type="text" id="cfgWebBrandName" value="OrderTrack" class="w-full px-3 py-2 border rounded-xl outline-none font-bold">
                         </div>
                         <div>
-                            <label class="font-bold text-gray-700 block mb-1">Support Phone (কন্টাক্ট হেল্পলাইন):</label>
+                            <label class="font-bold text-gray-700 block mb-1">Support Phone (হেল্পলাইন):</label>
                             <input type="text" id="cfgWebSupportPhone" value="+91 98765 43210" class="w-full px-3 py-2 border rounded-xl outline-none font-medium">
                         </div>
                         <div class="md:col-span-2">
-                            <label class="font-bold text-gray-700 block mb-1">About Us Content (অ্যাবাউট আস মডাল):</label>
-                            <textarea id="cfgWebAbout" rows="4" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">OrderTrack is an all-in-one culinary operations management suite built specifically for high-speed restaurants, bistros, and cloud kitchens.</textarea>
+                            <label class="font-bold text-gray-700 block mb-1">About Us Content (অ্যাবাউট আস):</label>
+                            <textarea id="cfgWebAbout" rows="3" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">OrderTrack is an all-in-one culinary operations management suite built specifically for high-speed restaurants, bistros, and cloud kitchens.</textarea>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="font-bold text-gray-700 block mb-1">Privacy Policy Content (প্রাইভেসি পলিসি মডাল):</label>
-                            <textarea id="cfgWebPrivacy" rows="4" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">OrderTrack guarantees complete confidentiality of your restaurant's billing and financial operations. Isolated data and SHA-256 hashed passwords.</textarea>
+                            <label class="font-bold text-gray-700 block mb-1">Privacy Policy Content:</label>
+                            <textarea id="cfgWebPrivacy" rows="3" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">OrderTrack guarantees complete confidentiality of your restaurant's billing and financial operations.</textarea>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="font-bold text-gray-700 block mb-1">Terms of Service Content (টার্মস অব সার্ভিস মডাল):</label>
-                            <textarea id="cfgWebTerms" rows="4" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">Usage agreement for authorized restaurant owners and floor staff. 99.9% cloud synchronization reliability during standard dining rush hours.</textarea>
+                            <label class="font-bold text-gray-700 block mb-1">Terms of Service Content:</label>
+                            <textarea id="cfgWebTerms" rows="3" class="w-full px-3 py-2 border rounded-xl outline-none resize-none font-medium">Usage agreement for authorized restaurant owners and floor staff. 99.9% cloud synchronization reliability.</textarea>
                         </div>
                     </div>
 
@@ -347,77 +332,60 @@
         </main>
     </div>
 
-    <!-- ================= MODAL: ADD / EDIT RESTAURANT SUBSCRIBER ================= -->
+    <!-- ================= MODAL: UPDATE SUBSCRIPTION / CLIENT FIX ================= -->
     <div id="clientModal" class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4 backdrop-blur-xs">
         <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-xs">
             <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-display font-bold text-sm text-gray-900">Subscriber Restaurant Setup</h3>
+                <h3 class="font-display font-bold text-sm text-gray-900">Manage & Fix Subscriber Subscription</h3>
                 <button onclick="closeClientModal()"><span class="material-symbols-outlined text-sm">close</span></button>
             </div>
 
             <div class="space-y-3">
-                <input type="hidden" id="editClientKey">
+                <input type="hidden" id="mRestId">
                 <div>
-                    <label class="font-bold block mb-1">Restaurant / Outlet Name *:</label>
-                    <input type="text" id="mOutletName" placeholder="e.g., Royal Spice Dine" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="font-bold block mb-1">Owner Name *:</label>
-                        <input type="text" id="mOwnerName" placeholder="Rahul Seal" class="w-full px-3.5 py-2 border rounded-xl outline-none">
-                    </div>
-                    <div>
-                        <label class="font-bold block mb-1">Owner Mobile *:</label>
-                        <input type="tel" id="mOwnerPhone" placeholder="9876543210" class="w-full px-3.5 py-2 border rounded-xl outline-none">
-                    </div>
+                    <label class="font-bold block mb-1">Restaurant / Outlet Name:</label>
+                    <input type="text" id="mOutletName" disabled class="w-full px-3.5 py-2 border rounded-xl outline-none bg-gray-50 font-bold">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="font-bold block mb-1">Assigned Plan:</label>
                         <select id="mAssignedPlan" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
-                            <option value="Free Trial">Free Trial (14 Days)</option>
+                            <option value="Free Trial">Free Trial</option>
                             <option value="Starter">Starter</option>
-                            <option value="Professional" selected>Professional</option>
+                            <option value="Professional">Professional</option>
                             <option value="Enterprise">Enterprise</option>
                         </select>
                     </div>
                     <div>
-                        <label class="font-bold block mb-1">Status & Payment:</label>
+                        <label class="font-bold block mb-1">Payment Status:</label>
                         <select id="mSubStatus" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
-                            <option value="Active">Active (Paid)</option>
-                            <option value="Expiring">Expiring Soon</option>
+                            <option value="ACTIVE">ACTIVE (Paid)</option>
                             <option value="Payment Failed">Payment Failed / Overdue</option>
-                            <option value="Suspended">Suspended</option>
+                            <option value="SUSPENDED">SUSPENDED</option>
                         </select>
                     </div>
                 </div>
                 <div>
-                    <label class="font-bold block mb-1">Expiry Date (YYYY-MM-DD):</label>
+                    <label class="font-bold block mb-1">Plan Expiry Date:</label>
                     <input type="date" id="mExpiryDate" class="w-full px-3.5 py-2 border rounded-xl outline-none font-bold">
-                </div>
-                <div>
-                    <label class="font-bold block mb-1">Special Internal Admin Note (ত্রুটি বা ডাটাবেজ সমস্যা সমাধান):</label>
-                    <input type="text" id="mAdminNotes" placeholder="Database sync fixed / UPI payment verified" class="w-full px-3.5 py-2 border rounded-xl outline-none">
                 </div>
             </div>
 
             <div class="pt-2 border-t flex justify-end gap-2">
                 <button onclick="closeClientModal()" class="px-4 py-2 bg-gray-100 rounded-xl font-bold">Cancel</button>
-                <button onclick="saveClientToFirebase()" class="px-5 py-2 bg-primary text-white rounded-xl font-bold shadow-sm">Save Client</button>
+                <button onclick="saveClientSubscriptionUpdate()" class="px-5 py-2 bg-primary text-white rounded-xl font-bold shadow-sm">Save & Update Plan</button>
             </div>
         </div>
     </div>
+
 <script>
-    // রেন্ডার এনভায়রনমেন্টের SUPER_ADMIN_SECRET-এর সাথে মিল রাখুন
-    const ADMIN_SECRET = process.env?.SUPER_ADMIN_SECRET || "my_secret_admin_999"; 
-    // রেন্ডার বা লোকাল ব্যাকএন্ড URL
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:10000' : 'https://your-app.onrender.com';
+    const ADMIN_SECRET = "my_secret_admin_999"; 
+    const API_BASE = 'https://order-track-qibw.onrender.com';
 
     let rawClients = [];
 
     function verifyOwnerPasscode() {
         const val = document.getElementById('ownerPasscode').value.trim();
-        // সিক্রেট কি লোকাল বা ব্যাকএন্ড দিয়ে যাচাই করা যাবে
         if (val.length > 0) {
             document.getElementById('masterAuthOverlay').style.display = 'none';
             document.getElementById('masterDashboard').classList.remove('hidden');
@@ -447,6 +415,7 @@
     async function initMasterConsole() {
         await fetchAdminStats();
         await fetchRestaurants();
+        loadSavedConfig();
     }
 
     async function fetchAdminStats() {
@@ -458,9 +427,25 @@
             if (data.success) {
                 document.getElementById('statTotalClients').innerText = data.stats.total_restaurants || 0;
                 document.getElementById('statActiveSubs').innerText = data.stats.active_subscriptions || 0;
-                document.getElementById('statFreeTrial').innerText = 0;
-                document.getElementById('statPaymentFailed').innerText = 0;
-                document.getElementById('statTotalRevenue').innerText = `₹0`;
+                
+                // Free trial and payment failed counters based on fetched clients
+                let trialCount = 0;
+                let failedCount = 0;
+                let totalRev = 0;
+
+                rawClients.forEach(c => {
+                    if(c.assigned_plan === 'Free Trial') trialCount++;
+                    if(c.subscription_status === 'Payment Failed') failedCount++;
+                    if(c.subscription_status === 'ACTIVE') {
+                        if(c.assigned_plan === 'Starter') totalRev += 399;
+                        if(c.assigned_plan === 'Professional') totalRev += 999;
+                        if(c.assigned_plan === 'Enterprise') totalRev += 2999;
+                    }
+                });
+
+                document.getElementById('statFreeTrial').innerText = trialCount;
+                document.getElementById('statPaymentFailed').innerText = failedCount;
+                document.getElementById('statTotalRevenue').innerText = `₹${totalRev.toLocaleString()}`;
             }
         } catch (err) {
             console.error("Stats Error:", err);
@@ -476,6 +461,8 @@
             if (data.success) {
                 rawClients = data.restaurants || [];
                 renderClientsDirectory(rawClients);
+                renderUrgentRenewals(rawClients);
+                fetchAdminStats(); // update stats with real arrays
             }
         } catch (err) {
             console.error("Fetch Restaurants Error:", err);
@@ -497,8 +484,10 @@
             tr.className = "hover:bg-gray-50/80 transition-colors";
 
             let statusBadge = "bg-emerald-50 text-emerald-700 border-emerald-200";
-            if(c.subscription_status === 'BLOCKED' || c.subscription_status === 'SUSPENDED') {
+            if(c.subscription_status === 'SUSPENDED' || c.subscription_status === 'Payment Failed') {
                 statusBadge = "bg-red-50 text-red-700 border-red-200";
+            } else if(c.assigned_plan === 'Free Trial') {
+                statusBadge = "bg-blue-50 text-blue-700 border-blue-200";
             }
 
             tr.innerHTML = `
@@ -507,11 +496,11 @@
                     <span class="text-[10px] text-gray-400">ID: ${c.id}</span>
                 </td>
                 <td class="py-3 px-4">
-                    <div class="font-bold text-gray-800">Phone: ${c.phone}</div>
-                    <div class="text-[10px] text-gray-500">Email: ${c.email}</div>
+                    <div class="font-bold text-gray-800">${c.phone}</div>
+                    <div class="text-[10px] text-gray-500">${c.email}</div>
                 </td>
                 <td class="py-3 px-4">
-                    <span class="px-2 py-0.5 rounded-md bg-gray-100 font-bold text-gray-700">${c.assigned_plan || 'Professional'}</span>
+                    <span class="px-2 py-0.5 rounded-md bg-gray-100 font-bold text-gray-700">${c.assigned_plan || 'Free Trial'}</span>
                 </td>
                 <td class="py-3 px-4 font-bold text-gray-600">${c.plan_expires_at ? new Date(c.plan_expires_at).toISOString().split('T')[0] : 'N/A'}</td>
                 <td class="py-3 px-4">
@@ -520,11 +509,8 @@
                     </span>
                 </td>
                 <td class="py-3 px-4 text-right space-x-1">
-                    <a href="tel:${c.phone}" class="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 inline-block" title="Call">
-                        <span class="material-symbols-outlined text-sm">call</span>
-                    </a>
-                    <button onclick="updateStatus('${c.id}', '${c.subscription_status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'}')" class="p-1.5 rounded-lg ${c.subscription_status === 'ACTIVE' ? 'bg-red-50 text-red-700' : 'bg-emerald-100 text-emerald-800'} inline-block" title="Toggle Status">
-                        <span class="material-symbols-outlined text-sm">${c.subscription_status === 'ACTIVE' ? 'block' : 'lock_open'}</span>
+                    <button onclick="openClientModalEdit('${c.id}')" class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 inline-block">
+                        Manage / Renew
                     </button>
                 </td>
             `;
@@ -532,23 +518,78 @@
         });
     }
 
-    async function updateStatus(restaurantId, status) {
-        if(!confirm(`রেস্টুরেন্টের স্ট্যাটাস ${status} করতে চান?`)) return;
+    function renderUrgentRenewals(list) {
+        const container = document.getElementById('urgentRenewalList');
+        container.innerHTML = "";
+        
+        const urgent = list.filter(c => {
+            if(!c.plan_expires_at) return false;
+            const diffDays = Math.ceil((new Date(c.plan_expires_at) - new Date()) / (1000 * 60 * 60 * 24));
+            return diffDays <= 3 || c.subscription_status === 'Payment Failed';
+        });
+
+        if(urgent.length === 0) {
+            container.innerHTML = `<p class="text-gray-400 py-4 text-center">বর্তমানে কোনো জরুরি রিনিউয়াল বাকি নেই।</p>`;
+            return;
+        }
+
+        urgent.forEach(c => {
+            const div = document.createElement('div');
+            div.className = "flex justify-between items-center p-3 bg-red-50/50 border border-red-100 rounded-2xl";
+            div.innerHTML = `
+                <div>
+                    <span class="font-bold text-gray-900">${c.name}</span> (${c.phone}) - <span class="text-red-600 font-bold">Expires: ${c.plan_expires_at.split('T')[0]}</span>
+                </div>
+                <button onclick="openClientModalEdit('${c.id}')" class="px-3 py-1 bg-primary text-white rounded-xl font-bold text-[11px]">Fix / Renew</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function openClientModalEdit(id) {
+        const c = rawClients.find(x => x.id === id);
+        if(!c) return;
+        document.getElementById('mRestId').value = c.id;
+        document.getElementById('mOutletName').value = c.name;
+        document.getElementById('mAssignedPlan').value = c.assigned_plan || 'Professional';
+        document.getElementById('mSubStatus').value = c.subscription_status || 'ACTIVE';
+        document.getElementById('mExpiryDate').value = c.plan_expires_at ? c.plan_expires_at.split('T')[0] : '';
+        document.getElementById('clientModal').classList.remove('hidden');
+        document.getElementById('clientModal').classList.add('flex');
+    }
+
+    function closeClientModal() {
+        document.getElementById('clientModal').classList.add('hidden');
+        document.getElementById('clientModal').classList.remove('flex');
+    }
+
+    async function saveClientSubscriptionUpdate() {
+        const restaurant_id = document.getElementById('mRestId').value;
+        const assigned_plan = document.getElementById('mAssignedPlan').value;
+        const subscription_status = document.getElementById('mSubStatus').value;
+        const plan_expires_at = document.getElementById('mExpiryDate').value;
+
         try {
-            const res = await fetch(`${API_BASE}/api/admin/restaurant-status`, {
+            const res = await fetch(`${API_BASE}/api/admin/update-subscription`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-admin-secret': ADMIN_SECRET
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ restaurant_id: restaurantId, status: status })
+                body: JSON.stringify({
+                    admin_secret: ADMIN_SECRET,
+                    restaurant_id,
+                    assigned_plan,
+                    plan_expires_at,
+                    subscription_status
+                })
             });
             const data = await res.json();
-            alert(data.message || data.error);
+            alert(data.message || "Updated successfully!");
+            closeClientModal();
             fetchRestaurants();
-            fetchAdminStats();
         } catch (err) {
-            console.error("Update Status Error:", err);
+            console.error("Update Error:", err);
+            alert("Failed to update subscription.");
         }
     }
 
@@ -556,10 +597,54 @@
         const q = document.getElementById('clientSearchInput').value.toLowerCase();
         const filtered = rawClients.filter(c => 
             (c.name || '').toLowerCase().includes(q) ||
-            (c.phone || '').toLowerCase().includes(q) ||
-            (c.email || '').toLowerCase().includes(q)
+            (c.phone || '').toLowerCase().includes(q)
         );
         renderClientsDirectory(filtered);
+    }
+
+    function savePlansAndBank() {
+        const config = {
+            upi: document.getElementById('cfgAdminUpi').value,
+            accName: document.getElementById('cfgAdminAccountName').value,
+            accNo: document.getElementById('cfgAdminAccountNo').value,
+            ifsc: document.getElementById('cfgAdminIfsc').value,
+            rzp: document.getElementById('cfgAdminRzpKey').value
+        };
+        localStorage.setItem('superAdminBankConfig', JSON.stringify(config));
+        alert('✅ Bank & Pricing settings saved successfully!');
+    }
+
+    function saveWebsiteCms() {
+        const cms = {
+            brand: document.getElementById('cfgWebBrandName').value,
+            phone: document.getElementById('cfgWebSupportPhone').value,
+            about: document.getElementById('cfgWebAbout').value,
+            privacy: document.getElementById('cfgWebPrivacy').value,
+            terms: document.getElementById('cfgWebTerms').value
+        };
+        localStorage.setItem('superAdminCms', JSON.stringify(cms));
+        alert('✅ Website CMS & modals published successfully!');
+    }
+
+    function loadSavedConfig() {
+        const savedBank = localStorage.getItem('superAdminBankConfig');
+        if(savedBank) {
+            const cfg = JSON.parse(savedBank);
+            document.getElementById('cfgAdminUpi').value = cfg.upi || '';
+            document.getElementById('cfgAdminAccountName').value = cfg.accName || '';
+            document.getElementById('cfgAdminAccountNo').value = cfg.accNo || '';
+            document.getElementById('cfgAdminIfsc').value = cfg.ifsc || '';
+            document.getElementById('cfgAdminRzpKey').value = cfg.rzp || '';
+        }
+        const savedCms = localStorage.getItem('superAdminCms');
+        if(savedCms) {
+            const cms = JSON.parse(savedCms);
+            document.getElementById('cfgWebBrandName').value = cms.brand || 'OrderTrack';
+            document.getElementById('cfgWebSupportPhone').value = cms.phone || '';
+            document.getElementById('cfgWebAbout').value = cms.about || '';
+            document.getElementById('cfgWebPrivacy').value = cms.privacy || '';
+            document.getElementById('cfgWebTerms').value = cms.terms || '';
+        }
     }
 </script>
 </body>

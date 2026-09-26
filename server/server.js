@@ -7,6 +7,7 @@ if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
 }
 
 const express = require('express');
+const compression = require('compression');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -19,6 +20,7 @@ const path = require('path');
 const pool = require('./db');
 
 const app = express();
+app.use(compression());
 
 // স্ট্যাটিক ফাইল ও রুট রাউট
 app.use(express.static(path.join(__dirname, '../')));
