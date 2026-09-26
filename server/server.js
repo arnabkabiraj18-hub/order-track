@@ -20,6 +20,7 @@ const path = require('path');
 const pool = require('./db');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(compression());
 
 // স্ট্যাটিক ফাইল ও রুট রাউট
