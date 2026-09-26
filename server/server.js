@@ -252,7 +252,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
                 const axios = require('axios');
                 await axios.get('https://www.fast2sms.com/dev/bulkV2', {
                    params: {
-                   route: 'q',
+                   route: 'dlt',
                    message: `Your OrderSync OTP is ${otpCode}. Valid for 10 minutes.`,
                    language: 'english',
                    flash: 0,
