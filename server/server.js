@@ -250,16 +250,19 @@ app.post('/api/auth/send-otp', async (req, res) => {
         if (process.env.SMS_API_KEY) {
             try {
                 const axios = require('axios');
-                await axios.get(`https://www.fast2sms.com/dev/bulkV2`, {
-                    params: {
-                        authorization: process.env.SMS_API_KEY,
-                        route: 'q',
-                        message: `Your OrderSync OTP is ${otpCode}. Valid for 10 minutes.`,
-                        language: 'english',
-                        flash: 0,
-                        numbers: identifier
-                    }
-                });
+                await axios.get('https://www.fast2sms.com/dev/bulkV2', {
+                   params: {
+                   route: 'q',
+                   message: `Your OrderSync OTP is ${otpCode}. Valid for 10 minutes.`,
+                   language: 'english',
+                   flash: 0,
+                   numbers: identifier
+                },
+                headers: {
+                  'authorization': process.env.SMS_API_KEY,
+                  'accept': 'application/json'
+                }
+            });
                 console.log(`📱 SMS Sent successfully to ${identifier}`);
             } catch (smsErr) {
                 console.warn("⚠️ SMS Gateway Warning (falling back to dev response):", smsErr.message);
