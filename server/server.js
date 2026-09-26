@@ -265,7 +265,8 @@ app.post('/api/auth/send-otp', async (req, res) => {
             });
                 console.log(`📱 SMS Sent successfully to ${identifier}`);
             } catch (smsErr) {
-                console.warn("⚠️ SMS Gateway Warning (falling back to dev response):", smsErr.message);
+                console.error('❌ Fast2SMS Actual Error:', smsErr.response?.data || smsErr.message);
+                console.warn('⚠️ SMS Gateway Warning (falling back to dev response)');
             }
         }
         
