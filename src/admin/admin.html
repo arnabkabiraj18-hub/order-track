@@ -1096,7 +1096,7 @@
 
     <!-- ================= SCRIPT LOGIC ================= -->
     <script>
-        const API_BASE_URL = "http://localhost:5000";
+        const API_BASE_URL = "window.location.origin";
         const RESTAURANT_ID = localStorage.getItem('CV_DEVICE_REST_ID') || "REST_001";
 
         let rawMenuItems = {};
