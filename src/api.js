@@ -1,6 +1,4 @@
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.'))
-    ? `http://${window.location.hostname}:5000/api` // লোকাল নেটওয়ার্কে থাকলে অটো সেই আইপি ও পোর্টে কাজ করবে
-    : 'https://your-live-backend-domain.com/api'; // পুরোপুরি লাইভে চলে গেলে এই ব্যাকএন্ড ডোমেইন ধরবে
+const API_BASE_URL = '/api';
 
 export const api = {
     // কমন ফেচ হ্যান্ডলার (টোেকেন সহ)
