@@ -190,11 +190,11 @@
 
             try {
                 // ব্যাকএন্ড API-এ লগইন রিকোয়েস্ট পাঠানো হচ্ছে
-                const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: phone, password: password })
-                });
+                const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: phone, password: password })
+            });
 
                 const data = await res.json();
 
