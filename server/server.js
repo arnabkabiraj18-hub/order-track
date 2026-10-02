@@ -576,6 +576,23 @@ app.post('/api/tables', verifySubscription, async (req, res) => {
     }
 });
 
+// ================= ZONE MANAGEMENT APIS =================
+app.get('/api/zones/:restaurantId', verifySubscription, async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+        const result = await pool.query(
+            "SELECT DISTINCT zone FROM tables WHERE restaurant_id = $1",
+            [restaurantId]
+        );
+        // জোনগুলোর তালিকা রিটার্ন করা
+        const zones = result.rows.map(row => row.zone);
+        res.json({ success: true, zones: zones.length > 0 ? zones : ['Main'] });
+    } catch (err) {
+        console.error("❌ Fetch Zones Error:", err.message);
+        res.status(500).json({ error: "Failed to fetch zones." });
+    }
+});
+
 // ================= STAFF / WAITER MANAGEMENT APIS (Enforces Pro Plan Max 2 Waiters) =================
 app.get('/api/admin/staff/:restaurantId', verifySubscription, async (req, res) => {
     try {
