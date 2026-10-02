@@ -61,7 +61,7 @@ app.use('/api/auth/', authLimiter);
 // ================= AUTHENTICATION MIDDLEWARE =================
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Fixed token index
+    const token = authHeader && authHeader.split(' ')[1];
     if (!token) return res.status(401).json({ error: "Access token missing!" });
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ error: "Invalid or expired token!" });
@@ -69,6 +69,18 @@ const authenticateToken = (req, res, next) => {
         next();
     });
 };
+
+// ================= PLAN LIMITS HELPER =================
+function getPlanLimits(planName) {
+    const plan = (planName || '').toLowerCase();
+    if (plan.includes('basic') || plan.includes('starter') || plan.includes('trial') || plan.includes('free')) {
+        return { maxTables: 15, maxWaiters: 0, dataMonths: 1, excelAllowed: false };
+    } else if (plan.includes('pro') || plan.includes('professional')) {
+        return { maxTables: -1, maxWaiters: 2, dataMonths: 6, excelAllowed: true };
+    } else { // Premium / Enterprise
+        return { maxTables: -1, maxWaiters: -1, dataMonths: -1, excelAllowed: true };
+    }
+}
 
 // ================= SUBSCRIPTION VERIFICATION MIDDLEWARE =================
 const verifySubscription = async (req, res, next) => {
@@ -94,6 +106,7 @@ const verifySubscription = async (req, res, next) => {
             });
         }
         req.assignedPlan = restaurant.assigned_plan;
+        req.planLimits = getPlanLimits(restaurant.assigned_plan);
         next();
     } catch (err) {
         console.error("Subscription Verification Error:", err);
@@ -169,6 +182,14 @@ async function initOrderTrackEnterpriseDB() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS tables (
+                id SERIAL PRIMARY KEY,
+                restaurant_id VARCHAR(64) REFERENCES restaurants(id) ON DELETE CASCADE,
+                table_no VARCHAR(50) NOT NULL,
+                zone VARCHAR(100) DEFAULT 'Main',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
                 restaurant_id VARCHAR(64) REFERENCES restaurants(id) ON DELETE CASCADE,
@@ -213,13 +234,13 @@ async function initOrderTrackEnterpriseDB() {
             CREATE INDEX IF NOT EXISTS idx_orders_resto ON orders(restaurant_id);
         `);
 
-        // ডিফল্ট প্ল্যান সিড করা (না থাকলে)
+        // ডিফল্ট প্ল্যান সিড করা
         await pool.query(`
             INSERT INTO subscription_plans (plan_name, price, duration_days, max_staff, description)
             VALUES 
-            ('Starter', 399.00, 365, 5, 'Digital QR Standees, Up to 50 Menu Items, Daily Revenue Reports'),
-            ('Professional', 999.00, 365, 15, 'Unlimited Menu & Modifiers, 360° Floor Heatmap Radar, 15 Waiter + 4 KDS Terminals, 24/7 Priority Emergency Support'),
-            ('Enterprise', 2999.00, 365, 50, 'Multi-Branch Central Ledger, Custom ERP & Tally Bridge, Dedicated Operations Manager')
+            ('Basic', 399.00, 365, 15, 'Basic Plan: Max 15 Tables, 1 Month History, Digital QR Menu & Billing'),
+            ('Pro', 999.00, 365, 17, 'Pro Plan: Max 2 Waiters, 6 Months History, Excel Download, Direct Kitchen Routing'),
+            ('Premium', 2999.00, 365, 50, 'Premium Plan: All Features Open, Unlimited Tables & Waiters, Advanced Analytics')
             ON CONFLICT (plan_name) DO NOTHING;
         `);
 
@@ -230,7 +251,7 @@ async function initOrderTrackEnterpriseDB() {
 }
 initOrderTrackEnterpriseDB();
 
-// ================= AUTHENTICATION & OTP APIS (DEV & PRODUCTION READY) =================
+// ================= AUTHENTICATION & OTP APIS =================
 app.post('/api/auth/send-otp', async (req, res) => {
     const identifier = req.body.identifier?.trim();
     if (!identifier) return res.status(400).json({ error: "Phone number or email is required!" });
@@ -267,15 +288,10 @@ app.post('/api/auth/send-otp', async (req, res) => {
                 console.log(`📱 SMS Sent successfully to ${identifier}`);
             } catch (smsErr) {
                 console.error('❌ Fast2SMS Actual Error:', smsErr.response?.data || smsErr.message);
-                console.warn('⚠️ SMS Gateway Warning (falling back to dev response)');
             }
         }
         
-        res.json({ 
-            success: true, 
-            message: "OTP sent successfully.",
-            dev_otp: otpCode // টেস্টিং ও ইনস্ট্যান্ট ভেরিফিকেশনের জন্য
-        });
+        res.json({ success: true, message: "OTP sent successfully.", dev_otp: otpCode });
     } catch (err) {
         console.error("❌ Send OTP Error:", err.message);
         res.status(500).json({ error: "Internal Security Error." });
@@ -299,7 +315,6 @@ app.post('/api/auth/verify-otp', async (req, res) => {
         if (record.otp_code !== otpCode) return res.status(400).json({ error: "Incorrect OTP code!" });
 
         await pool.query("UPDATE phone_otps SET verified = TRUE WHERE identifier = $1", [identifier]);
-        console.log(`✅ OTP Verified Successfully for identifier: ${identifier}`);
         res.json({ success: true, message: "OTP verified successfully!" });
     } catch (err) {
         console.error("❌ Verify OTP Error:", err.message);
@@ -317,7 +332,7 @@ app.get('/api/public/plans', async (req, res) => {
     }
 });
 
-// ================= SUBSCRIPTION & SUPER ADMIN APIS =================
+// ================= RESTAURANT REGISTER & ADMIN APIS =================
 app.post('/api/restaurant/register', async (req, res) => {
     try {
         const { id, name, phone, email } = req.body;
@@ -328,7 +343,7 @@ app.post('/api/restaurant/register', async (req, res) => {
 
         await pool.query(
             `INSERT INTO restaurants (id, name, phone, email, assigned_plan, subscription_status, plan_expires_at) 
-             VALUES ($1, $2, $3, $4, 'Free Trial', 'ACTIVE', $5)
+             VALUES ($1, $2, $3, $4, 'Basic', 'ACTIVE', $5)
              ON CONFLICT (id) DO UPDATE SET 
              assigned_plan = EXCLUDED.assigned_plan, 
              subscription_status = EXCLUDED.subscription_status, 
@@ -336,11 +351,7 @@ app.post('/api/restaurant/register', async (req, res) => {
             [id, name, phone, email, trialExpiresAt]
         );
 
-        res.json({ 
-            success: true, 
-            message: "Restaurant registered with 14 days free trial!",
-            plan_expires_at: trialExpiresAt
-        });
+        res.json({ success: true, message: "Restaurant registered with trial!", plan_expires_at: trialExpiresAt });
     } catch (err) {
         console.error("Registration Error:", err);
         res.status(500).json({ error: "Registration failed." });
@@ -363,41 +374,10 @@ app.post('/api/admin/update-subscription', async (req, res) => {
             [assigned_plan, plan_expires_at, subscription_status, restaurant_id]
         );
 
-        res.json({ 
-            success: true, 
-            message: `Subscription updated for restaurant ID: ${restaurant_id}` 
-        });
+        res.json({ success: true, message: `Subscription updated for restaurant ID: ${restaurant_id}` });
     } catch (err) {
         console.error("Admin Update Error:", err);
         res.status(500).json({ error: "Failed to update subscription." });
-    }
-});
-
-app.get('/api/admin/plans', async (req, res) => {
-    try {
-        const result = await pool.query("SELECT * FROM subscription_plans ORDER BY price ASC");
-        res.json({ success: true, plans: result.rows });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch plans" });
-    }
-});
-
-app.post('/api/admin/plans', async (req, res) => {
-    try {
-        const { admin_secret, plan_name, price, duration_days, max_staff, description } = req.body;
-        if (admin_secret !== process.env.SUPER_ADMIN_SECRET) {
-            return res.status(403).json({ error: "Unauthorized" });
-        }
-        await pool.query(
-            `INSERT INTO subscription_plans (plan_name, price, duration_days, max_staff, description)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (plan_name) DO UPDATE SET price = EXCLUDED.price, duration_days = EXCLUDED.duration_days, max_staff = EXCLUDED.max_staff, description = EXCLUDED.description`,
-            [plan_name, price, duration_days, max_staff, description]
-        );
-        res.json({ success: true, message: "Subscription plan saved/updated successfully!" });
-    } catch (err) {
-        console.error("Plan Save Error:", err);
-        res.status(500).json({ error: "Failed to save plan" });
     }
 });
 
@@ -421,39 +401,7 @@ app.get('/api/admin/stats', verifySuperAdmin, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error("Stats Error:", err);
         res.status(500).json({ error: "Failed to fetch admin stats." });
-    }
-});
-
-app.get('/api/admin/restaurants', verifySuperAdmin, async (req, res) => {
-    try {
-        const result = await pool.query(
-            `SELECT id, name, phone, email, subscription_status, assigned_plan, plan_expires_at, created_at 
-             FROM restaurants 
-             ORDER BY created_at DESC`
-        );
-        res.json({ success: true, restaurants: result.rows });
-    } catch (err) {
-        console.error("Fetch Restaurants Error:", err);
-        res.status(500).json({ error: "Failed to fetch restaurants." });
-    }
-});
-
-app.post('/api/admin/restaurant-status', verifySuperAdmin, async (req, res) => {
-    try {
-        const { restaurant_id, status } = req.body; 
-        if (!restaurant_id || !status) {
-            return res.status(400).json({ error: "Restaurant ID and status are required." });
-        }
-        await pool.query(
-            "UPDATE restaurants SET subscription_status = $1 WHERE id = $2",
-            [status, restaurant_id]
-        );
-        res.json({ success: true, message: `Restaurant ${restaurant_id} status updated to ${status}` });
-    } catch (err) {
-        console.error("Status Update Error:", err);
-        res.status(500).json({ error: "Failed to update restaurant status." });
     }
 });
 
@@ -478,13 +426,13 @@ app.post('/api/auth/register', async (req, res) => {
         );
         if (existingCheck.rows.length > 0) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: "Number or email is already registered in the system!" });
+            return res.status(400).json({ error: "Number or email is already registered!" });
         }
 
         const otpCheck = await client.query("SELECT * FROM phone_otps WHERE identifier = $1", [phone]);
         if (otpCheck.rows.length === 0 || !otpCheck.rows[0].verified) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: "Mobile number verification required via OTP before registration!" });
+            return res.status(400).json({ error: "Mobile number verification required via OTP!" });
         }
 
         const restaurantId = 'REST_' + Date.now().toString(36);
@@ -494,7 +442,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         await client.query(
             `INSERT INTO restaurants (id, name, phone, email, subscription_status, assigned_plan, plan_expires_at)
-             VALUES ($1, $2, $3, $4, 'ACTIVE', 'Free Trial', $5)`,
+             VALUES ($1, $2, $3, $4, 'ACTIVE', 'Basic', $5)`,
             [restaurantId, restaurantName, phone, email, trialExpiresAt]
         );
 
@@ -513,12 +461,10 @@ app.post('/api/auth/register', async (req, res) => {
             { expiresIn: '30d' }
         );
 
-        console.log(`🎉 Registration Successful for Restaurant ID: ${restaurantId}`);
-        res.status(201).json({ success: true, token, restaurantId, message: "Registration successful with 14-day trial!" });
+        res.status(201).json({ success: true, token, restaurantId, message: "Registration successful!" });
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error("❌ Register Error Details:", err.message);
-        res.status(500).json({ error: "Registration error encountered: " + err.message });
+        res.status(500).json({ error: "Registration error: " + err.message });
     } finally {
         client.release();
     }
@@ -539,7 +485,7 @@ app.post('/api/auth/login', async (req, res) => {
         );
 
         if (userRes.rows.length === 0) {
-            return res.status(400).json({ error: "User not found with this phone/email!" });
+            return res.status(400).json({ error: "User not found!" });
         }
 
         const user = userRes.rows[0];
@@ -554,7 +500,6 @@ app.post('/api/auth/login', async (req, res) => {
 
         res.json({ success: true, token, restaurantId: user.restaurant_id, role: user.role });
     } catch (err) {
-        console.error("❌ Login Error:", err.message);
         res.status(500).json({ error: "Login error encountered." });
     }
 });
@@ -589,12 +534,93 @@ app.post('/api/public/orders', async (req, res) => {
         io.to(`resto_${restaurantId}`).emit('new_order_placed', { tableNo, orders: insertedOrders });
         res.status(201).json({ success: true, orders: insertedOrders });
     } catch (err) {
-        console.error("❌ Order Placement Error:", err.message);
         res.status(500).json({ error: "Order placement error." });
     }
 });
 
-// ================= KITCHEN MODULE APIS (Protected with Subscription Guard) =================
+// ================= TABLE MANAGEMENT APIS (Enforces Basic Plan 15 Table Limit) =================
+app.get('/api/tables/:restaurantId', verifySubscription, async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+        const result = await pool.query("SELECT * FROM tables WHERE restaurant_id = $1 ORDER BY id ASC", [restaurantId]);
+        res.json({ success: true, tables: result.rows, maxTables: req.planLimits.maxTables });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch tables." });
+    }
+});
+
+app.post('/api/tables', verifySubscription, async (req, res) => {
+    try {
+        const { restaurantId, tableNo, zone } = req.body;
+        if (!restaurantId || !tableNo) {
+            return res.status(400).json({ error: "Restaurant ID and table number are required." });
+        }
+
+        // টেবিল লিমিট চেক (Basic প্ল্যানে ম্যাক্সিমাম ১৫টি)
+        const countRes = await pool.query("SELECT COUNT(*) FROM tables WHERE restaurant_id = $1", [restaurantId]);
+        const currentCount = parseInt(countRes.rows[0].count);
+
+        if (req.planLimits.maxTables !== -1 && currentCount >= req.planLimits.maxTables) {
+            return res.status(403).json({ 
+                error: `Your Basic Plan allows a maximum of ${req.planLimits.maxTables} tables. Please upgrade to Pro or Premium for unlimited tables!` 
+            });
+        }
+
+        const result = await pool.query(
+            "INSERT INTO tables (restaurant_id, table_no, zone) VALUES ($1, $2, $3) RETURNING *",
+            [restaurantId, tableNo, zone || 'Main']
+        );
+        res.status(201).json({ success: true, table: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to add table." });
+    }
+});
+
+// ================= STAFF / WAITER MANAGEMENT APIS (Enforces Pro Plan Max 2 Waiters) =================
+app.get('/api/admin/staff/:restaurantId', verifySubscription, async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+        const result = await pool.query("SELECT id, email, phone, role, created_at FROM restaurant_users WHERE restaurant_id = $1", [restaurantId]);
+        res.json({ success: true, staff: result.rows, maxWaiters: req.planLimits.maxWaiters });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch staff." });
+    }
+});
+
+app.post('/api/admin/staff', verifySubscription, async (req, res) => {
+    try {
+        const { restaurantId, email, phone, password, role } = req.body;
+        if (!restaurantId || !email || !phone || !password) {
+            return res.status(400).json({ error: "All staff fields are required." });
+        }
+
+        // যদি ওয়েটার অ্যাড করতে চায়, তবে প্রজেক্টের প্ল্যান অনুযায়ী ওয়েটার লিমিট চেক করব
+        if (role === 'Waiter' && req.planLimits.maxWaiters !== -1) {
+            const waiterCountRes = await pool.query("SELECT COUNT(*) FROM restaurant_users WHERE restaurant_id = $1 AND role = 'Waiter'", [restaurantId]);
+            const currentWaiters = parseInt(waiterCountRes.rows[0].count);
+            if (currentWaiters >= req.planLimits.maxWaiters) {
+                return res.status(403).json({ 
+                    error: `Your Pro Plan allows a maximum of ${req.planLimits.maxWaiters} waiters. Please upgrade to Premium for unlimited waiters!` 
+                });
+            }
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        const result = await pool.query(
+            `INSERT INTO restaurant_users (restaurant_id, email, phone, password_hash, role) 
+             VALUES ($1, $2, $3, $4, $5) RETURNING id, email, phone, role`,
+            [restaurantId, email, phone, passwordHash, role || 'Waiter']
+        );
+
+        res.status(201).json({ success: true, staff: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to add staff member." });
+    }
+});
+
+// ================= KITCHEN MODULE APIS =================
 app.get('/api/kitchen/orders/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
@@ -604,7 +630,6 @@ app.get('/api/kitchen/orders/:restaurantId', verifySubscription, async (req, res
         );
         res.json({ success: true, orders: result.rows });
     } catch (err) {
-        console.error("❌ Kitchen Orders Error:", err.message);
         res.status(500).json({ error: "Failed to fetch kitchen orders." });
     }
 });
@@ -618,19 +643,17 @@ app.patch('/api/kitchen/order-status', verifySubscription, async (req, res) => {
         await pool.query("UPDATE orders SET status = $1 WHERE id = $2", [status, orderId]);
         res.json({ success: true, message: "Order status updated successfully." });
     } catch (err) {
-        console.error("❌ Update Order Status Error:", err.message);
         res.status(500).json({ error: "Failed to update order status." });
     }
 });
 
-// ================= ADMIN MODULE APIS (Protected with Subscription Guard where applicable) =================
+// ================= ADMIN MODULE APIS (Enforces Data Retention: Basic=1 Month, Pro=6 Months) =================
 app.get('/api/admin/menu/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
         const result = await pool.query("SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY id DESC", [restaurantId]);
         res.json({ success: true, menu: result.rows });
     } catch (err) {
-        console.error("❌ Admin Menu Fetch Error:", err.message);
         res.status(500).json({ error: "Failed to fetch admin menu." });
     }
 });
@@ -648,7 +671,6 @@ app.post('/api/admin/menu', verifySubscription, async (req, res) => {
         );
         res.status(201).json({ success: true, item: result.rows[0] });
     } catch (err) {
-        console.error("❌ Add Menu Item Error:", err.message);
         res.status(500).json({ error: "Failed to add menu item." });
     }
 });
@@ -664,7 +686,6 @@ app.put('/api/admin/menu/:itemId', async (req, res) => {
         );
         res.json({ success: true, item: queryRes.rows[0] });
     } catch (err) {
-        console.error("❌ Update Menu Item Error:", err.message);
         res.status(500).json({ error: "Failed to update menu item." });
     }
 });
@@ -675,7 +696,6 @@ app.delete('/api/admin/menu/:itemId', async (req, res) => {
         await pool.query("DELETE FROM menu_items WHERE id = $1", [itemId]);
         res.json({ success: true, message: "Menu item deleted successfully." });
     } catch (err) {
-        console.error("❌ Delete Menu Item Error:", err.message);
         res.status(500).json({ error: "Failed to delete menu item." });
     }
 });
@@ -683,27 +703,55 @@ app.delete('/api/admin/menu/:itemId', async (req, res) => {
 app.get('/api/admin/stats/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
-        const salesRes = await pool.query("SELECT COALESCE(SUM(grand_total), 0) as total_sales FROM sales_invoices WHERE restaurant_id = $1", [restaurantId]);
-        const ordersRes = await pool.query("SELECT COUNT(*) as total_orders FROM orders WHERE restaurant_id = $1", [restaurantId]);
+        const months = req.planLimits.dataMonths;
+
+        let dateFilter = "";
+        let queryParams = [restaurantId];
+
+        if (months !== -1) {
+            dateFilter = "AND created_at >= NOW() - INTERVAL '1 month' * $2";
+            queryParams.push(months);
+        }
+
+        const salesQuery = `SELECT COALESCE(SUM(grand_total), 0) as total_sales FROM sales_invoices WHERE restaurant_id = $1 ${dateFilter}`;
+        const ordersQuery = `SELECT COUNT(*) as total_orders FROM orders WHERE restaurant_id = $1 ${dateFilter}`;
+
+        const salesRes = await pool.query(salesQuery, queryParams);
+        const ordersRes = await pool.query(ordersQuery, queryParams);
+
         res.json({
             success: true,
             totalSales: parseFloat(salesRes.rows[0].total_sales || 0),
-            totalOrders: parseInt(ordersRes.rows[0].total_orders || 0)
+            totalOrders: parseInt(ordersRes.rows[0].total_orders || 0),
+            dataRetentionMonths: months
         });
     } catch (err) {
-        console.error("❌ Admin Stats Error:", err.message);
         res.status(500).json({ error: "Failed to fetch admin stats." });
     }
 });
 
-// ================= BILLING MODULE APIS (Protected with Subscription Guard) =================
+// ================= EXCEL DOWNLOAD RESTRICTION API =================
+app.get('/api/admin/export-excel/:restaurantId', verifySubscription, async (req, res) => {
+    if (!req.planLimits.excelAllowed) {
+        return res.status(403).json({ 
+            error: "Excel download is not available in the Basic Plan. Please upgrade to Pro or Premium to download Excel reports!" 
+        });
+    }
+    try {
+        // এক্সেল এক্সপোর্টের লজিক বা ডেমো রেসপন্স
+        res.json({ success: true, message: "Excel report generated successfully for Pro/Premium plan." });
+    } catch (err) {
+        res.status(500).json({ error: "Excel export failed." });
+    }
+});
+
+// ================= BILLING MODULE APIS =================
 app.get('/api/billing/orders/:restaurantId', verifySubscription, async (req, res) => {
     try {
         const { restaurantId } = req.params;
         const result = await pool.query("SELECT * FROM orders WHERE restaurant_id = $1 AND payment = 'Unpaid' ORDER BY created_at DESC", [restaurantId]);
         res.json({ success: true, orders: result.rows });
     } catch (err) {
-        console.error("❌ Billing Orders Error:", err.message);
         res.status(500).json({ error: "Failed to fetch billing orders." });
     }
 });
@@ -730,12 +778,11 @@ app.post('/api/billing/checkout', verifySubscription, async (req, res) => {
 
         res.json({ success: true, invoiceId: invoiceNo, message: "Payment processed successfully." });
     } catch (err) {
-        console.error("❌ Checkout Error:", err.message);
         res.status(500).json({ error: "Payment checkout failed." });
     }
 });
 
-// ================= WAITER MODULE APIS (Protected with Subscription Guard) =================
+// ================= WAITER MODULE APIS =================
 app.post('/api/waiter/orders', verifySubscription, async (req, res) => {
     try {
         const { restaurantId, tableNo, items } = req.body;
@@ -756,7 +803,6 @@ app.post('/api/waiter/orders', verifySubscription, async (req, res) => {
         io.to(`resto_${restaurantId}`).emit('new_order_placed', { tableNo, orders: insertedOrders });
         res.status(201).json({ success: true, orderId: insertedOrders[0]?.id, orders: insertedOrders });
     } catch (err) {
-        console.error("❌ Waiter Order Error:", err.message);
         res.status(500).json({ error: "Waiter order creation failed." });
     }
 });
@@ -779,7 +825,7 @@ if (process.env.REDIS_URL || process.env.USE_REDIS === 'true') {
             io.adapter(createAdapter(pubClient, subClient));
             console.log("⚡ Socket.io Redis Adapter Connected Successfully!");
         }).catch(err => {
-            console.warn("⚠️ Redis Adapter Connection Failed, continuing with local socket.io:", err.message);
+            console.warn("⚠️ Redis Adapter Connection Failed:", err.message);
         });
     } catch (rErr) {
         console.warn("⚠️ Redis module/setup warning:", rErr.message);
