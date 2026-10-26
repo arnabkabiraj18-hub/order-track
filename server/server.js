@@ -35,7 +35,7 @@ const io = new Server(server, {
 });
 
 // ================= ADVANCED FIREWALL & HARDENING =================
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:5500', 'https://order-track-qibw.onrender.com'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -85,31 +85,42 @@ function getPlanLimits(planName) {
 // ================= SUBSCRIPTION VERIFICATION MIDDLEWARE =================
 const verifySubscription = async (req, res, next) => {
     try {
-        const restaurant_id = req.body.restaurant_id || req.headers['x-restaurant-id'] || req.query.restaurant_id || req.params.restaurantId;
-        if (!restaurant_id) {
+        const rawId = req.body?.restaurantId || req.body?.restaurant_id || 
+                      req.headers?.['x-restaurant-id'] || 
+                      req.query?.restaurant_id || req.query?.restaurantId || 
+                      req.params?.restaurantId || req.params?.restaurant_id;
+
+        if (!rawId) {
             return res.status(400).json({ error: "Restaurant ID is required for verification." });
         }
+
+        const restaurant_id = decodeURIComponent(rawId).trim();
+
         const result = await pool.query(
             "SELECT subscription_status, plan_expires_at, assigned_plan FROM restaurants WHERE id = $1",
             [restaurant_id]
         );
+
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "Restaurant not found." });
         }
+
         const restaurant = result.rows[0];
         const now = new Date();
-        const expiresAt = new Date(restaurant.plan_expires_at);
+        const expiresAt = restaurant.plan_expires_at ? new Date(restaurant.plan_expires_at) : new Date(now.getTime() + 86400000);
 
         if (restaurant.subscription_status !== 'ACTIVE' || expiresAt < now) {
             return res.status(403).json({ 
                 error: "Your subscription has expired or is inactive. Please renew your plan." 
             });
         }
-        req.assignedPlan = restaurant.assigned_plan;
-        req.planLimits = getPlanLimits(restaurant.assigned_plan);
+
+        req.restaurantId = restaurant_id;
+        req.assignedPlan = restaurant.assigned_plan || 'Basic';
+        req.planLimits = getPlanLimits(req.assignedPlan);
         next();
     } catch (err) {
-        console.error("Subscription Verification Error:", err);
+        console.error("Subscription Verification Error:", err.message);
         res.status(500).json({ error: "Internal server error during subscription check." });
     }
 };
@@ -577,19 +588,80 @@ app.post('/api/tables', verifySubscription, async (req, res) => {
 });
 
 // ================= ZONE MANAGEMENT APIS =================
-app.get('/api/zones/:restaurantId', verifySubscription, async (req, res) => {
+const getZonesHandler = async (req, res) => {
     try {
-        const { restaurantId } = req.params;
         const result = await pool.query(
             "SELECT DISTINCT zone FROM tables WHERE restaurant_id = $1",
-            [restaurantId]
+            [req.restaurantId]
         );
-        // জোনগুলোর তালিকা রিটার্ন করা
-        const zones = result.rows.map(row => row.zone);
+        const zones = result.rows.map(row => row.zone).filter(Boolean);
         res.json({ success: true, zones: zones.length > 0 ? zones : ['Main'] });
     } catch (err) {
         console.error("❌ Fetch Zones Error:", err.message);
         res.status(500).json({ error: "Failed to fetch zones." });
+    }
+};
+
+app.get('/api/zones', verifySubscription, getZonesHandler);
+app.get('/api/zones/:restaurantId', verifySubscription, getZonesHandler);
+app.post('/api/zones', verifySubscription, (req, res) => {
+    res.json({ success: true, message: "Zone handled successfully." });
+});
+
+// ================= TABLE MANAGEMENT APIS =================
+const getTablesHandler = async (req, res) => {
+    try {
+        const result = await pool.query(
+            "SELECT * FROM tables WHERE restaurant_id = $1 ORDER BY id ASC", 
+            [req.restaurantId]
+        );
+        res.json({ success: true, tables: result.rows, maxTables: req.planLimits.maxTables });
+    } catch (err) {
+        console.error("❌ Fetch Tables Error:", err.message);
+        res.status(500).json({ error: "Failed to fetch tables." });
+    }
+};
+
+app.get('/api/tables', verifySubscription, getTablesHandler);
+app.get('/api/tables/:restaurantId', verifySubscription, getTablesHandler);
+
+app.post('/api/tables', verifySubscription, async (req, res) => {
+    try {
+        const restaurantId = req.restaurantId;
+        const tableNo = req.body?.tableNo || req.body?.table_no || req.body?.name;
+        const zone = req.body?.zone || 'Main';
+
+        if (!restaurantId || !tableNo) {
+            return res.status(400).json({ error: "Restaurant ID and table number are required." });
+        }
+
+        // টেবিল লিমিট চেক (Basic প্ল্যানে ম্যাক্সিমাম ১৫টি)
+        const countRes = await pool.query("SELECT COUNT(*) FROM tables WHERE restaurant_id = $1", [restaurantId]);
+        const currentCount = parseInt(countRes.rows[0].count);
+
+        if (req.planLimits.maxTables !== -1 && currentCount >= req.planLimits.maxTables) {
+            return res.status(403).json({ 
+                error: `Your Basic Plan allows a maximum of ${req.planLimits.maxTables} tables. Please upgrade to Pro or Premium!` 
+            });
+        }
+
+        const result = await pool.query(
+            "INSERT INTO tables (restaurant_id, table_no, zone) VALUES ($1, $2, $3) RETURNING *",
+            [restaurantId, tableNo, zone]
+        );
+        res.status(201).json({ success: true, table: result.rows[0] });
+    } catch (err) {
+        console.error("Add table error:", err);
+        res.status(500).json({ error: "Failed to add table." });
+    }
+});
+
+app.delete('/api/tables/:id', verifySubscription, async (req, res) => {
+    try {
+        await pool.query("DELETE FROM tables WHERE id = $1 AND restaurant_id = $2", [req.params.id, req.restaurantId]);
+        res.json({ success: true, message: "Table deleted successfully." });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to delete table." });
     }
 });
 

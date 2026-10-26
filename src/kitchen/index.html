@@ -74,7 +74,8 @@
         .ticket-glow { animation: softGlow 2s infinite ease-in-out; }
     </style>
 
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script> -->
+     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="bg-surface text-on-surface font-body min-h-screen p-4 md:p-6 flex flex-col antialiased select-none">
 
@@ -641,7 +642,8 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <!-- Socket.io CDN -->
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script> -->
+ <script src="/socket.io/socket.io.js"></script>
 
 <script>
     const appSocket = io('https://order-track-qibw.onrender.com', {
