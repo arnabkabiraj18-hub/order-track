@@ -648,28 +648,34 @@ app.delete('/api/tables/:id', verifySubscription, async (req, res) => {
     }
 });
 
-// ================= MISSING ADMIN DASHBOARD APIS (Fixes 404 Errors) =================
-app.get('/api/branding/:restaurantId?', verifySubscription, async (req, res) => {
+// ================= MISSING ADMIN DASHBOARD APIS (Express v5 Safe - No '?' in URL paths) =================
+const getBrandingHandler = async (req, res) => {
     try {
         const result = await pool.query("SELECT * FROM restaurants WHERE id = $1", [req.restaurantId]);
         res.json({ success: true, branding: result.rows[0] || {}, data: result.rows[0] || {} });
     } catch (err) {
         res.status(500).json({ error: "Failed to fetch branding." });
     }
-});
+};
+
+app.get('/api/branding', verifySubscription, getBrandingHandler);
+app.get('/api/branding/:restaurantId', verifySubscription, getBrandingHandler);
 
 app.post('/api/branding', verifySubscription, async (req, res) => {
     res.json({ success: true, message: "Branding updated successfully." });
 });
 
-app.get('/api/menu/:restaurantId?', verifySubscription, async (req, res) => {
+const getMenuHandler = async (req, res) => {
     try {
         const result = await pool.query("SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY id DESC", [req.restaurantId]);
         res.json({ success: true, menu: result.rows, items: result.rows, data: result.rows });
     } catch (err) {
         res.status(500).json({ error: "Failed to fetch menu." });
     }
-});
+};
+
+app.get('/api/menu', verifySubscription, getMenuHandler);
+app.get('/api/menu/:restaurantId', verifySubscription, getMenuHandler);
 
 app.post('/api/menu', verifySubscription, async (req, res) => {
     try {
@@ -717,22 +723,13 @@ app.get('/api/sales/history', verifySubscription, async (req, res) => {
         const effectiveDays = Math.min(requestedDays, maxPlanDays);
 
         const result = await pool.query(
-            `SELECT DATE(created_at) as date, COALESCE(SUM(grand_total), 0) as total_sales, COUNT(*) as total_orders 
-             FROM sales_invoices 
+            `SELECT * FROM sales_invoices 
              WHERE restaurant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL
-             GROUP BY DATE(created_at) 
-             ORDER BY date DESC`,
+             ORDER BY created_at DESC`,
             [req.restaurantId, effectiveDays]
         );
 
-        res.json({ 
-            success: true, 
-            history: result.rows, 
-            sales: result.rows, 
-            data: result.rows,
-            totalSales: result.rows.reduce((sum, r) => sum + parseFloat(r.total_sales || 0), 0),
-            totalOrders: result.rows.reduce((sum, r) => sum + parseInt(r.total_orders || 0), 0)
-        });
+        res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: "Failed to fetch sales history." });
     }
