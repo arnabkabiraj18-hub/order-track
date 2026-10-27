@@ -2077,17 +2077,22 @@
             document.getElementById('generalMenuModalOverlay').classList.remove('flex');
         }
 
-        async function loadSalesOverview(days) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/sales/history?days=${days}`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
-                if(res.ok) {
-                    const list = await res.json();
-                    currentSalesData = {};
-                    list.forEach(r => { currentSalesData[r.invoice_no] = r; });
-                }
-            } catch(e) {}
-            renderAnalyticsCards(days);
+        let currentSalesData = {};
+
+   async function loadSalesOverview(days) {
+        currentSalesData = {};
+        try {
+           const res = await fetch(`${API_BASE_URL}/api/sales/history?days=${days}`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+            if (res.ok) {
+                const data = await res.json();
+                const list = Array.isArray(data) ? data : (data.history || data.sales || data.data || []);
+                list.forEach(r => { 
+                   if (r && r.invoice_no) currentSalesData[r.invoice_no] = r; 
+            });
         }
+       } catch(e) {}
+       renderAnalyticsCards(days);
+    }
 
         function renderAnalyticsCards(days) {
             let rev = 0, count = 0;
