@@ -1953,11 +1953,14 @@
         async function saveNewTable() {
     const no = document.getElementById('inputNewTableNo').value.trim();
     const zone = document.getElementById('inputNewTableZone').value;
-    
-    // ... (আপনার আগের ফেচ বা টেবিল সেভ করার কোডটুকু এখানে থাকবে) ...
+
+    if (!no) {
+        alert("Doya kore table number din.");
+        return;
+    }
 
     try {
-        const response = await fetch('/api/tables', {
+        const response = await fetch(`${API_BASE_URL}/api/tables`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1968,17 +1971,19 @@
         });
 
         if (response.ok) {
-            // টেবিল সেভ সফল হলে মোডাল বন্ধ হবে এবং টেবিল লিস্ট রিফ্রেশ হবে
             closeAddTableModal();
-            loadTables(); 
+            
+            // Jodi apnar table refresh korar function onno namer hoy, eta use korben:
+            if (typeof fetchTables === 'function') fetchTables();
+            else if (typeof loadAdminData === 'function') loadAdminData();
 
-            // 🚀 টেবিল অ্যাড করার সাথে সাথেই কিউআর কোড পপআপ ওপেন করার জন্য:
+            // 🚀 Table add howar sathe sathei QR code open hobe:
             if (typeof openGeneralMenuQRModal === 'function') {
                 openGeneralMenuQRModal();
             }
         } else {
             const errData = await response.json();
-            alert(errData.error || "Failed to add table.");
+            alert(errData.error || "Table add korte somossa hoyeche.");
         }
     } catch (e) {
         console.error("Error saving table:", e);
