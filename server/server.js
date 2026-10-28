@@ -648,6 +648,16 @@ app.delete('/api/tables/:id', verifySubscription, async (req, res) => {
     }
 });
 
+app.patch('/api/tables/:id/status', verifySubscription, async (req, res) => {
+    try {
+        const { status } = req.body;
+        await pool.query("UPDATE tables SET status = $1 WHERE id = $2 AND restaurant_id = $3", [status, req.params.id, req.restaurantId]);
+        res.json({ success: true, message: "Table status updated successfully." });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update table status." });
+    }
+});
+
 // ================= MISSING ADMIN DASHBOARD APIS (Express v5 Safe - No '?' in URL paths) =================
 const getBrandingHandler = async (req, res) => {
     try {

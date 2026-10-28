@@ -638,6 +638,11 @@
                     </div>
                 </div>
 
+            <!-- Table Cards Grid Container -->
+                <div id="adminTablesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+            <!-- Dynamic table cards will load here -->
+                </div>
+
                 <!-- Table Operational Counter Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div class="bg-surface-container-lowest p-5 rounded-2xl border shadow-sm">
@@ -1867,17 +1872,47 @@
         }
 
         async function fetchTables() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/tables`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
-                if(res.ok) {
-                    const list = await res.json();
-                    rawTables = {};
-                    list.forEach(t => { rawTables[t.table_no] = t; });
-                }
-            } catch(e) {}
-            renderTablesGrid(rawTables);
-            renderLiveFloorRadar();
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/tables`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+        if(res.ok) {
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : (data.tables || data.data || []);
+            
+            rawTables = {};
+            list.forEach(t => { rawTables[t.table_no] = t; });
+            
+            // 🚀 এই ফাংশনটি এখানে কল করে দিন, তাহলেই কার্ডগুলো স্ক্রিনে দেখাবে!
+            if (typeof renderTableCards === 'function') {
+                renderTableCards(list);
+            }
         }
+    } catch(e) {}
+    renderTablesGrid(rawTables);
+    renderLiveFloorRadar();
+}
+
+        async function toggleTableStatus(tableId, currentStatus) {
+    const newStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/tables/${tableId}/status`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+        if(res.ok) {
+            // যদি আপনার টেবিল রিফ্রেশ করার ফাংশনটির নাম fetchTables হয়ে থাকে:
+            if (typeof fetchTables === 'function') {
+                fetchTables();
+            }
+        }
+    } catch(e) {
+        console.error("Status update error:", e);
+    }
+}
 
         function renderZonesFilter() {
             const container = document.getElementById('adminZoneFilterContainer');
@@ -2428,6 +2463,67 @@
             link.download = `Sales_Ledger_${new Date().toISOString().slice(0,10)}.csv`;
             link.click();
         }
+
+
+        function renderTableCards(tables) {
+    const container = document.getElementById('adminTablesContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    tables.forEach(t => {
+        const isInactive = t.status === 'inactive';
+        container.innerHTML += `
+            <div class="bg-white p-4 rounded-xl border border-primary/20 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-bold text-base">Table ${t.table_no}</h4>
+                    <span class="text-xs px-2 py-1 rounded ${isInactive ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700'}">${isInactive ? 'Inactive' : 'Active'}</span>
+                </div>
+                <p class="text-xs text-gray-500 mb-4">Zone: ${t.zone || 'Main'}</p>
+                <div class="flex gap-2">
+                    <button onclick="generateTableQR('${t.table_no}')" class="flex-1 bg-primary text-white py-1.5 px-3 rounded-lg text-xs font-semibold">Generate QR</button>
+                    <button onclick="toggleTableStatus('${t.id}', '${t.status}')" class="px-3 py-1.5 border rounded-lg text-xs">${isInactive ? 'Activate' : 'Deactivate'}</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function generateTableQR(tableNo) {
+    const restaurantId = localStorage.getItem('restaurantId') || localStorage.getItem('restaurant_id') || 'REST_DEFAULT';
+    const publicMenuUrl = `${window.location.origin}/src/public/menu.html?restaurantId=${restaurantId}&table=${tableNo}`;
+    
+    let qrWindow = window.open('', '_blank', 'width=500,height=600');
+    qrWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="bn">
+        <head>
+            <title>Print Standee QR - Table ${tableNo}</title>
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; background: #fff; margin: 0; padding: 20px; }
+                .qr-card { border: 2px solid #ddd; padding: 30px; border-radius: 16px; display: inline-block; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+                h3 { margin-bottom: 5px; color: #111; font-size: 22px; text-transform: uppercase; }
+                p { font-size: 14px; color: #555; margin-bottom: 20px; }
+                img { width: 220px; height: 220px; border-radius: 8px; }
+                @media print {
+                    body { background: #fff; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="qr-card">
+                <h3>Table No: ${tableNo}</h3>
+                <p>Digital Menu & Self-Ordering</p>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(publicMenuUrl)}" alt="QR" />
+                <p style="margin-top: 15px; font-size: 12px; color: #778;">Scan to view menu & order</p>
+            </div>
+            <br><br>
+            <button class="no-print" onclick="window.print()" style="padding: 10px 20px; background: #b91c1c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Print QR Code</button>
+        </body>
+        </html>
+    `);
+    qrWindow.document.close();
+}
     </script>
     <script type="module">
     import { api } from '../api.js';
