@@ -1951,22 +1951,39 @@
             document.getElementById('addTableModal').classList.remove('flex');
         }
         async function saveNewTable() {
-            const no = document.getElementById('inputNewTableNo').value.trim();
-            const zone = document.getElementById('inputNewTableZone').value || (rawZones[0] || "Main Dining");
-            const seats = parseInt(document.getElementById('inputNewTableSeats').value) || 4;
-            if(!no) { alert("Please enter table number!"); return; }
+    const no = document.getElementById('inputNewTableNo').value.trim();
+    const zone = document.getElementById('inputNewTableZone').value;
+    
+    // ... (আপনার আগের ফেচ বা টেবিল সেভ করার কোডটুকু এখানে থাকবে) ...
 
-            try {
-                await fetch(`${API_BASE_URL}/api/tables`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
-                    body: JSON.stringify({ table_no: no, zone, seats, active: true })
-                });
-                closeAddTableModal();
-                document.getElementById('inputNewTableNo').value = "";
-                fetchTables();
-            } catch(e) {}
+    try {
+        const response = await fetch('/api/tables', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ tableNo: no, zone: zone })
+        });
+
+        if (response.ok) {
+            // টেবিল সেভ সফল হলে মোডাল বন্ধ হবে এবং টেবিল লিস্ট রিফ্রেশ হবে
+            closeAddTableModal();
+            loadTables(); 
+
+            // 🚀 টেবিল অ্যাড করার সাথে সাথেই কিউআর কোড পপআপ ওপেন করার জন্য:
+            if (typeof openGeneralMenuQRModal === 'function') {
+                openGeneralMenuQRModal();
+            }
+        } else {
+            const errData = await response.json();
+            alert(errData.error || "Failed to add table.");
         }
+    } catch (e) {
+        console.error("Error saving table:", e);
+    }
+}
 
         function renderTablesGrid(tables) {
             const grid = document.getElementById('adminTablesGrid');
