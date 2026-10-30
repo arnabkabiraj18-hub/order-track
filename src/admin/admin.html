@@ -1977,36 +1977,37 @@
             document.getElementById('createZoneModal').classList.add('hidden');
             document.getElementById('createZoneModal').classList.remove('flex');
         }
-        async function saveNewZone() {
-    const zoneInput = document.getElementById('inputNewZoneName');
-    const name = zoneInput ? zoneInput.value.trim() : '';
+        
+async function saveNewZone() {
+    const zoneInput = document.getElementById('inputNewZoneName') || document.querySelector('input[name="zone"]');
+    const zoneName = zoneInput ? zoneInput.value.trim() : '';
     
-    if (!name) { 
-        alert("Please type a zone name!"); 
-        return; 
+    if (!zoneName) {
+        alert("দয়া করে জোনের নাম লিখুন।");
+        return;
     }
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/zones`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
+            headers: {
+                'Content-Type': 'application/json',
                 'x-restaurant-id': RESTAURANT_ID,
                 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
             },
-            body: JSON.stringify({ zone: name, zone_name: name })
+            body: JSON.stringify({ zone: zoneName })
         });
 
         if (response.ok) {
-            closeCreateZoneModal();
-            if (zoneInput) zoneInput.value = "";
+            if (typeof closeCreateZoneModal === 'function') closeCreateZoneModal();
+            if (zoneInput) zoneInput.value = '';
             
-            // জোন ও টেবিল লিস্ট রিফ্রেশ করা
             if (typeof fetchZones === 'function') fetchZones();
             if (typeof fetchTables === 'function') fetchTables();
+            else location.reload();
         } else {
-            const errData = await response.json();
-            alert(errData.error || "Failed to save zone.");
+            const err = await response.json();
+            alert(err.error || "জোন সংরক্ষণ করতে সমস্যা হয়েছে।");
         }
     } catch (e) {
         console.error("Zone save error:", e);
@@ -2101,8 +2102,9 @@
             });
         }
 
-        async function toggleTableActive(tableNo, currentStatus) {
-    const newStatus = !currentStatus;
+        
+async function toggleTableActive(tableNo, currentStatus) {
+    const newStatus = (currentStatus === false || currentStatus === 'inactive') ? true : false;
     try {
         const res = await fetch(`${API_BASE_URL}/api/tables/${tableNo}/status`, {
             method: 'PATCH',
@@ -2116,11 +2118,14 @@
         if(res.ok) {
             if(typeof fetchTables === 'function') fetchTables();
             else location.reload();
+        } else {
+            alert("টেবিল স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে।");
         }
     } catch(e) {
         console.error("Toggle error:", e);
     }
 }
+
 
         async function deleteTable(no) {
             if(confirm(`Delete Table ${no}?`)) {
@@ -2726,55 +2731,94 @@ if ('serviceWorker' in navigator) {
     });
 </script>
 <script>
-// Complete Menu Management & Save Script
-async function saveMenuItem(event) {
-    if (event) event.preventDefault();
+// ইউনিভার্সাল মেনু সেভ হ্যান্ডলার - যেকোনো ফর্ম বা মোডালের জন্য কাজ করবে
+document.addEventListener('DOMContentLoaded', () => {
+    // মেনু ফর্মগুলো স্বয়ংক্রিয়ভাবে ধরে সাবমিট আটকানো এবং ডেটা পাঠানো
+    const menuForms = document.querySelectorAll('form');
+    menuForms.forEach(form => {
+        if (form.innerHTML.includes('price') || form.innerHTML.includes('Menu') || form.innerHTML.includes('category')) {
+            form.onsubmit = async function(e) {
+                e.preventDefault();
+                
+                // ফর্মের ভেতর থেকে যেকোনো ইনপুট বা সিলেক্ট ফিল্ড খুঁজে বের করা
+                const inputs = form.querySelectorAll('input, select');
+                let name = '', price = 0, category = 'General';
 
-    // Sob possible ID ba selector check korar jonno:
-    const nameInput = document.getElementById('inputMenuName') || document.getElementById('menuName') || document.querySelector('input[name="name"]') || document.querySelector('#menu-name') || document.querySelector('.menu-name-input');
-    const priceInput = document.getElementById('inputMenuPrice') || document.getElementById('menuPrice') || document.querySelector('input[name="price"]') || document.querySelector('#menu-price') || document.querySelector('.menu-price-input');
-    const categoryInput = document.getElementById('inputMenuCategory') || document.getElementById('menuCategory') || document.querySelector('select[name="category"]') || document.querySelector('#menu-category');
+                inputs.forEach(input => {
+                    const val = input.value.trim();
+                    const nameAttr = (input.name || input.id || '').toLowerCase();
+                    
+                    if (!val) return;
+                    
+                    if (nameAttr.includes('name') || nameAttr.includes('item')) {
+                        name = val;
+                    } else if (nameAttr.includes('price') || nameAttr.includes('rate')) {
+                        price = parseFloat(val) || 0;
+                    } else if (nameAttr.includes('cat') || input.tagName === 'SELECT') {
+                        category = val;
+                    } else if (!name && isNaN(val)) {
+                        name = val; // ফলব্যাক হিসেবে প্রথম টেক্সট ইনপুটটি নাম ধরবে
+                    } else if (price === 0 && !isNaN(val)) {
+                        price = parseFloat(val) || 0; // ফলব্যাক হিসেবে প্রথম সংখ্যাটি দাম ধরবে
+                    }
+                });
 
-    const name = nameInput ? nameInput.value.trim() : '';
-    const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
-    const category = categoryInput ? categoryInput.value.trim() : 'General';
+                if (!name) {
+                    alert("দয়া করে মেনু আইটেমের নাম লিখুন।");
+                    return;
+                }
 
-    console.log("Form Values Captured:", { name, price, category });
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/menu`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-restaurant-id': RESTAURANT_ID,
+                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                        },
+                        body: JSON.stringify({ name, category, price, available: true })
+                    });
 
-    if (!name) {
-        alert("Doya kore menu item-er sothik nam din! Form input ID check korun.");
-        return;
-    }
+                    if (response.ok) {
+                        form.reset();
+                        // মোডাল বন্ধ করার চেষ্টা
+                        const modals = document.querySelectorAll('.fixed, .modal, [id*="modal"]');
+                        modals.forEach(m => m.classList.add('hidden'));
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/menu`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-restaurant-id': RESTAURANT_ID,
-                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-            },
-            body: JSON.stringify({ name, category, price, available: true })
-        });
-
-        const resData = await response.json();
-        console.log("Server Response:", resData);
-
-        if (response.ok) {
-            if (typeof closeMenuModal === 'function') closeMenuModal();
-            if (nameInput) nameInput.value = '';
-            if (priceInput) priceInput.value = '';
-
-            if (typeof fetchMenu === 'function') fetchMenu();
-            else if (typeof loadMenu === 'function') loadMenu();
-            else location.reload();
-        } else {
-            alert(resData.error || "Menu item save korte somossa hoyeche.");
+                        // মেনু লিস্ট রিফ্রেশ করা
+                        if (typeof fetchMenu === 'function') fetchMenu();
+                        else if (typeof loadMenu === 'function') loadMenu();
+                        else location.reload();
+                    } else {
+                        const err = await response.json();
+                        alert(err.error || "মেনু আইটেম সেভ করতে সমস্যা হয়েছে।");
+                    }
+                } catch (err) {
+                    console.error("Menu save error:", err);
+                }
+            };
         }
-    } catch (e) {
-        console.error("Menu save catch error:", e);
+    });
+});
+</script>
+<script>
+// আগের ভেরিয়েবল রিডিক্লেয়ার এড়াতে সরাসরি উইন্ডো অবজেক্ট ব্যবহার করা হলো
+window.originalRenderTablesGrid = window.originalRenderTablesGrid || window.renderTablesGrid || function(){};
+window.renderTablesGrid = function(tablesData) {
+    const list = Array.isArray(tablesData) ? tablesData : Object.values(tablesData || {});
+    
+    let total = list.length;
+    let active = list.filter(t => t.active !== false && t.status !== 'inactive').length;
+    let inactive = total - active;
+
+    if(document.getElementById('totalTablesCount')) document.getElementById('totalTablesCount').innerText = total;
+    if(document.getElementById('activeTablesCount')) document.getElementById('activeTablesCount').innerText = active;
+    if(document.getElementById('inactiveTablesCount')) document.getElementById('inactiveTablesCount').innerText = inactive;
+
+    if(typeof window.originalRenderTablesGrid === 'function') {
+        window.originalRenderTablesGrid(tablesData);
     }
-}
+};
 </script>
 </body>
 </html>
