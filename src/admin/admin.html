@@ -1879,14 +1879,32 @@
             const list = Array.isArray(data) ? data : (data.tables || data.data || []);
             
             rawTables = {};
-            list.forEach(t => { rawTables[t.table_no] = t; });
-            
-            // 🚀 এই ফাংশনটি এখানে কল করে দিন, তাহলেই কার্ডগুলো স্ক্রিনে দেখাবে!
-            if (typeof renderTableCards === 'function') {
-                renderTableCards(list);
-            }
+            let activeCount = 0;
+            let inactiveCount = 0;
+
+            list.forEach(t => { 
+                rawTables[t.table_no] = t; 
+                // টেবিল অ্যাক্টিভ নাকি ইনঅ্যাক্টিভ তা চেক করা
+                if (t.active === false || t.status === 'inactive') {
+                    inactiveCount++;
+                } else {
+                    activeCount++;
+                }
+            });
+
+            // 🚀 Total, Active এবং Inactive Tables-এর সংখ্যা স্ক্রিনে বসানো
+            const totalEl = document.getElementById('statTotalTablesCount');
+            const activeEl = document.getElementById('statActiveTablesCount');
+            const inactiveEl = document.getElementById('statInactiveTablesCount');
+
+            if (totalEl) totalEl.innerText = list.length;
+            if (activeEl) activeEl.innerText = activeCount;
+            if (inactiveEl) inactiveEl.innerText = inactiveCount;
         }
-    } catch(e) {}
+    } catch(e) {
+        console.error("Error fetching tables:", e);
+    }
+    
     renderTablesGrid(rawTables);
     renderLiveFloorRadar();
 }
@@ -1962,19 +1980,40 @@
             document.getElementById('createZoneModal').classList.remove('flex');
         }
         async function saveNewZone() {
-            const name = document.getElementById('inputNewZoneName').value.trim();
-            if(!name) { alert("Please type a zone name!"); return; }
-            try {
-                await fetch(`${API_BASE_URL}/api/zones`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
-                    body: JSON.stringify({ zone_name: name })
-                });
-                closeCreateZoneModal();
-                document.getElementById('inputNewZoneName').value = "";
-                fetchZones();
-            } catch(e) {}
+    const zoneInput = document.getElementById('inputNewZoneName');
+    const name = zoneInput ? zoneInput.value.trim() : '';
+    
+    if (!name) { 
+        alert("Please type a zone name!"); 
+        return; 
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/zones`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ zone: name, zone_name: name })
+        });
+
+        if (response.ok) {
+            closeCreateZoneModal();
+            if (zoneInput) zoneInput.value = "";
+            
+            // জোন ও টেবিল লিস্ট রিফ্রেশ করা
+            if (typeof fetchZones === 'function') fetchZones();
+            if (typeof fetchTables === 'function') fetchTables();
+        } else {
+            const errData = await response.json();
+            alert(errData.error || "Failed to save zone.");
         }
+    } catch (e) {
+        console.error("Zone save error:", e);
+    }
+}
 
         function openAddTableModal() {
             updateZoneSelectDropdown();
@@ -2065,15 +2104,26 @@
         }
 
         async function toggleTableActive(no, currentStatus) {
-            try {
-                await fetch(`${API_BASE_URL}/api/tables/${no}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
-                    body: JSON.stringify({ active: !currentStatus })
-                });
-                fetchTables();
-            } catch(e) {}
+    const newStatus = !currentStatus; // true থাকলে false, false থাকলে true হবে
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/tables/${no}/status`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ active: newStatus })
+        });
+        if(res.ok) {
+            fetchTables(); // সফল হলে টেবিল লিস্ট রিফ্রেশ হয়ে যাবে
+        } else {
+            alert("টেবিল স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে।");
         }
+    } catch(e) {
+        console.error("Status update error:", e);
+    }
+}
 
         async function deleteTable(no) {
             if(confirm(`Delete Table ${no}?`)) {

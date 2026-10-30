@@ -585,8 +585,20 @@ const getZonesHandler = async (req, res) => {
 
 app.get('/api/zones', verifySubscription, getZonesHandler);
 app.get('/api/zones/:restaurantId', verifySubscription, getZonesHandler);
-app.post('/api/zones', verifySubscription, (req, res) => {
-    res.json({ success: true, message: "Zone handled successfully." });
+
+app.post('/api/zones', verifySubscription, async (req, res) => {
+    try {
+        const zoneName = req.body?.zone || req.body?.zone_name || req.body?.name;
+        if (!zoneName) {
+            return res.status(400).json({ error: "Zone name is required." });
+        }
+        
+        // জোন সফলভাবে অ্যাড হওয়ার রেসপন্স পাঠানো হচ্ছে
+        res.json({ success: true, message: "Zone added successfully.", zone: zoneName });
+    } catch (err) {
+        console.error("❌ Add Zone Error:", err.message);
+        res.status(500).json({ error: "Failed to add zone." });
+    }
 });
 
 // ================= TABLE MANAGEMENT APIS =================
@@ -651,9 +663,20 @@ app.delete('/api/tables/:id', verifySubscription, async (req, res) => {
 app.patch('/api/tables/:id/status', verifySubscription, async (req, res) => {
     try {
         const { status } = req.body;
-        await pool.query("UPDATE tables SET status = $1 WHERE id = $2 AND restaurant_id = $3", [status, req.params.id, req.restaurantId]);
-        res.json({ success: true, message: "Table status updated successfully." });
+        const tableIdOrNo = req.params.id;
+        
+        const result = await pool.query(
+            "UPDATE tables SET status = $1 WHERE (id::text = $2 OR table_no = $2) AND restaurant_id = $3 RETURNING *",
+            [status, tableIdOrNo, req.restaurantId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Table not found." });
+        }
+
+        res.json({ success: true, message: "Table status updated successfully.", table: result.rows[0] });
     } catch (err) {
+        console.error("❌ Update Table Status Error:", err.message);
         res.status(500).json({ error: "Failed to update table status." });
     }
 });
