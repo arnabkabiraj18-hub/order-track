@@ -2101,13 +2101,10 @@
             });
         }
 
-        async function toggleTableActive(no, currentStatus) {
-    // বর্তমান স্ট্যাটাস active কিনা তা নিখুঁতভাবে চেক করা (স্ট্রিং বা বুলিয়ান যাই হোক না কেন)
-    const isActive = currentStatus === true || currentStatus === 'active' || currentStatus === 'TRUE';
-    const newStatus = !isActive; 
-
+        async function toggleTableActive(tableNo, currentStatus) {
+    const newStatus = !currentStatus;
     try {
-        const res = await fetch(`${API_BASE_URL}/api/tables/${no}/status`, {
+        const res = await fetch(`${API_BASE_URL}/api/tables/${tableNo}/status`, {
             method: 'PATCH',
             headers: { 
                 'Content-Type': 'application/json',
@@ -2116,15 +2113,12 @@
             },
             body: JSON.stringify({ active: newStatus, status: newStatus ? 'active' : 'inactive' })
         });
-        
-        if (res.ok) {
-            fetchTables(); // সফল হলে টেবিল লিস্ট ও কাউন্ট সাথে সাথে রিফ্রেশ হয়ে যাবে
-        } else {
-            const errData = await res.json().catch(() => ({}));
-            alert(errData.error || "টেবিল স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে।");
+        if(res.ok) {
+            if(typeof fetchTables === 'function') fetchTables();
+            else location.reload();
         }
     } catch(e) {
-        console.error("Status update error:", e);
+        console.error("Toggle error:", e);
     }
 }
 
@@ -2577,6 +2571,23 @@ function generateTableQR(tableNo) {
     `);
     qrWindow.document.close();
 }
+
+const originalRenderTablesGrid = window.renderTablesGrid || function(){};
+window.renderTablesGrid = function(tablesData) {
+    const list = Array.isArray(tablesData) ? tablesData : Object.values(tablesData || {});
+    
+    let total = list.length;
+    let active = list.filter(t => t.active !== false && t.status !== 'inactive').length;
+    let inactive = total - active;
+
+    if(document.getElementById('totalTablesCount')) document.getElementById('totalTablesCount').innerText = total;
+    if(document.getElementById('activeTablesCount')) document.getElementById('activeTablesCount').innerText = active;
+    if(document.getElementById('inactiveTablesCount')) document.getElementById('inactiveTablesCount').innerText = inactive;
+
+    if(typeof originalRenderTablesGrid === 'function') {
+        originalRenderTablesGrid(tablesData);
+    }
+};
     </script>
     <script type="module">
     import { api } from '../api.js';
@@ -2719,16 +2730,19 @@ if ('serviceWorker' in navigator) {
 async function saveMenuItem(event) {
     if (event) event.preventDefault();
 
-    const nameInput = document.getElementById('inputMenuName') || document.getElementById('menuName');
-    const categoryInput = document.getElementById('inputMenuCategory') || document.getElementById('menuCategory');
-    const priceInput = document.getElementById('inputMenuPrice') || document.getElementById('menuPrice');
+    // Sob possible ID ba selector check korar jonno:
+    const nameInput = document.getElementById('inputMenuName') || document.getElementById('menuName') || document.querySelector('input[name="name"]') || document.querySelector('#menu-name') || document.querySelector('.menu-name-input');
+    const priceInput = document.getElementById('inputMenuPrice') || document.getElementById('menuPrice') || document.querySelector('input[name="price"]') || document.querySelector('#menu-price') || document.querySelector('.menu-price-input');
+    const categoryInput = document.getElementById('inputMenuCategory') || document.getElementById('menuCategory') || document.querySelector('select[name="category"]') || document.querySelector('#menu-category');
 
     const name = nameInput ? nameInput.value.trim() : '';
-    const category = categoryInput ? categoryInput.value.trim() : 'General';
     const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+    const category = categoryInput ? categoryInput.value.trim() : 'General';
+
+    console.log("Form Values Captured:", { name, price, category });
 
     if (!name) {
-        alert("Doya kore menu item-er nam din.");
+        alert("Doya kore menu item-er sothik nam din! Form input ID check korun.");
         return;
     }
 
@@ -2743,6 +2757,9 @@ async function saveMenuItem(event) {
             body: JSON.stringify({ name, category, price, available: true })
         });
 
+        const resData = await response.json();
+        console.log("Server Response:", resData);
+
         if (response.ok) {
             if (typeof closeMenuModal === 'function') closeMenuModal();
             if (nameInput) nameInput.value = '';
@@ -2752,11 +2769,10 @@ async function saveMenuItem(event) {
             else if (typeof loadMenu === 'function') loadMenu();
             else location.reload();
         } else {
-            const err = await response.json();
-            alert(err.error || "Menu item save korte somossa hoyeche.");
+            alert(resData.error || "Menu item save korte somossa hoyeche.");
         }
     } catch (e) {
-        console.error("Menu save error:", e);
+        console.error("Menu save catch error:", e);
     }
 }
 </script>
