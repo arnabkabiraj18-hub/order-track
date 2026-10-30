@@ -2811,9 +2811,9 @@ window.renderTablesGrid = function(tablesData) {
     let active = list.filter(t => t.active !== false && t.status !== 'inactive').length;
     let inactive = total - active;
 
-    if(document.getElementById('totalTablesCount')) document.getElementById('totalTablesCount').innerText = total;
-    if(document.getElementById('activeTablesCount')) document.getElementById('activeTablesCount').innerText = active;
-    if(document.getElementById('inactiveTablesCount')) document.getElementById('inactiveTablesCount').innerText = inactive;
+    if(document.getElementById('statTotalTablesCount')) document.getElementById('totalTablesCount').innerText = total;
+    if(document.getElementById('sataActiveTablesCount')) document.getElementById('activeTablesCount').innerText = active;
+    if(document.getElementById('statInactiveTablesCount')) document.getElementById('inactiveTablesCount').innerText = inactive;
 
     if(typeof window.originalRenderTablesGrid === 'function') {
         window.originalRenderTablesGrid(tablesData);
