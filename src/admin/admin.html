@@ -1859,17 +1859,23 @@
         }
 
         async function fetchZones() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/zones`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
-                if(res.ok) {
-                    const list = await res.json();
-                    rawZones = list.map(z => z.zone_name);
-                }
-            } catch(e) {}
-            if(rawZones.length === 0) rawZones = ["Main Dining", "AC Lounge", "Patio", "Rooftop"];
-            renderZonesFilter();
-            updateZoneSelectDropdown();
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/zones`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
+        if(res.ok) {
+            const data = await res.json();
+            const zones = data.zones || ['Main'];
+            
+            // Render Zone Filter Buttons on UI
+            const zoneContainer = document.getElementById('adminZoneFilterContainer');
+            if(zoneContainer) {
+                zoneContainer.innerHTML = `<button onclick="filterTablesByZone('all', this)" class="zone-pill active">All Zones</button>`;
+                zones.forEach(z => {
+                    zoneContainer.innerHTML += `<button onclick="filterTablesByZone('${z}', this)" class="zone-pill">${z}</button>`;
+                });
+            }
         }
+    } catch(e) {}
+}
 
         async function fetchTables() {
     try {
@@ -1884,7 +1890,6 @@
 
             list.forEach(t => { 
                 rawTables[t.table_no] = t; 
-                // টেবিল অ্যাক্টিভ নাকি ইনঅ্যাক্টিভ তা চেক করা
                 if (t.active === false || t.status === 'inactive') {
                     inactiveCount++;
                 } else {
@@ -1892,19 +1897,12 @@
                 }
             });
 
-            // 🚀 Total, Active এবং Inactive Tables-এর সংখ্যা স্ক্রিনে বসানো
-            const totalEl = document.getElementById('statTotalTablesCount');
-            const activeEl = document.getElementById('statActiveTablesCount');
-            const inactiveEl = document.getElementById('statInactiveTablesCount');
-
-            if (totalEl) totalEl.innerText = list.length;
-            if (activeEl) activeEl.innerText = activeCount;
-            if (inactiveEl) inactiveEl.innerText = inactiveCount;
+            // Correct Count Display in HTML Cards
+            document.getElementById('totalTablesCount').innerText = list.length;
+            document.getElementById('activeTablesCount').innerText = activeCount;
+            document.getElementById('inactiveTablesCount').innerText = inactiveCount;
         }
-    } catch(e) {
-        console.error("Error fetching tables:", e);
-    }
-    
+    } catch(e) {}
     renderTablesGrid(rawTables);
     renderLiveFloorRadar();
 }
@@ -2104,7 +2102,10 @@
         }
 
         async function toggleTableActive(no, currentStatus) {
-    const newStatus = !currentStatus; // true থাকলে false, false থাকলে true হবে
+    // বর্তমান স্ট্যাটাস active কিনা তা নিখুঁতভাবে চেক করা (স্ট্রিং বা বুলিয়ান যাই হোক না কেন)
+    const isActive = currentStatus === true || currentStatus === 'active' || currentStatus === 'TRUE';
+    const newStatus = !isActive; 
+
     try {
         const res = await fetch(`${API_BASE_URL}/api/tables/${no}/status`, {
             method: 'PATCH',
@@ -2113,12 +2114,14 @@
                 'x-restaurant-id': RESTAURANT_ID,
                 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
             },
-            body: JSON.stringify({ active: newStatus })
+            body: JSON.stringify({ active: newStatus, status: newStatus ? 'active' : 'inactive' })
         });
-        if(res.ok) {
-            fetchTables(); // সফল হলে টেবিল লিস্ট রিফ্রেশ হয়ে যাবে
+        
+        if (res.ok) {
+            fetchTables(); // সফল হলে টেবিল লিস্ট ও কাউন্ট সাথে সাথে রিফ্রেশ হয়ে যাবে
         } else {
-            alert("টেবিল স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে।");
+            const errData = await res.json().catch(() => ({}));
+            alert(errData.error || "টেবিল স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে।");
         }
     } catch(e) {
         console.error("Status update error:", e);
@@ -2710,6 +2713,52 @@ if ('serviceWorker' in navigator) {
     appSocket.on('disconnect', (reason) => {
         console.warn('⚠️ ইন্টারনেট কানেকশন স্লো বা বিচ্ছিন্ন: ', reason);
     });
+</script>
+<script>
+// Complete Menu Management & Save Script
+async function saveMenuItem(event) {
+    if (event) event.preventDefault();
+
+    const nameInput = document.getElementById('inputMenuName') || document.getElementById('menuName');
+    const categoryInput = document.getElementById('inputMenuCategory') || document.getElementById('menuCategory');
+    const priceInput = document.getElementById('inputMenuPrice') || document.getElementById('menuPrice');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const category = categoryInput ? categoryInput.value.trim() : 'General';
+    const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+
+    if (!name) {
+        alert("Doya kore menu item-er nam din.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/menu`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ name, category, price, available: true })
+        });
+
+        if (response.ok) {
+            if (typeof closeMenuModal === 'function') closeMenuModal();
+            if (nameInput) nameInput.value = '';
+            if (priceInput) priceInput.value = '';
+
+            if (typeof fetchMenu === 'function') fetchMenu();
+            else if (typeof loadMenu === 'function') loadMenu();
+            else location.reload();
+        } else {
+            const err = await response.json();
+            alert(err.error || "Menu item save korte somossa hoyeche.");
+        }
+    } catch (e) {
+        console.error("Menu save error:", e);
+    }
+}
 </script>
 </body>
 </html>
