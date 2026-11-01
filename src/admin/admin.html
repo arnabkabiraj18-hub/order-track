@@ -2036,11 +2036,13 @@
         }
         
 async function saveNewZone() {
-    const zoneInput = document.getElementById('inputNewZoneName') || document.querySelector('input[name="zone"]');
+    const zoneInput = document.getElementById('inputNewZoneName') || document.getElementById('zoneNameInput');
     const zoneName = zoneInput ? zoneInput.value.trim() : '';
     
+    console.log("Saving Zone:", zoneName); // Console-e check korar jonno
+
     if (!zoneName) {
-        alert("দয়া করে জোনের নাম লিখুন।");
+        alert("Doya kore zone-er nam din.");
         return;
     }
 
@@ -2055,19 +2057,25 @@ async function saveNewZone() {
             body: JSON.stringify({ zone: zoneName })
         });
 
+        const resData = await response.json();
+        console.log("Zone Server Response:", resData);
+
         if (response.ok) {
-            if (typeof closeCreateZoneModal === 'function') closeCreateZoneModal();
             if (zoneInput) zoneInput.value = '';
             
+            // Modal bondho korar function sothikvabe call kora
+            if (typeof closeCreateZoneModal === 'function') closeCreateZoneModal();
+            else if (typeof closeModal === 'function') closeModal();
+            
+            // List refresh kora
             if (typeof fetchZones === 'function') fetchZones();
             if (typeof fetchTables === 'function') fetchTables();
-            else location.reload();
         } else {
-            const err = await response.json();
-            alert(err.error || "জোন সংরক্ষণ করতে সমস্যা হয়েছে।");
+            alert(resData.error || "Zone save korte somossa hoyeche.");
         }
     } catch (e) {
         console.error("Zone save error:", e);
+        alert("Network ba server error hoyeche.");
     }
 }
 
