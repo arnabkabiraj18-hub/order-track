@@ -2171,9 +2171,9 @@ function renderTablesGrid(tables) {
     });
 
     // 🚀 কাউন্টারগুলো সরাসরি আপডেট করার কোড (যা জিরো হয়ে থাকত)
-    if (document.getElementById('totalTablesCount')) document.getElementById('totalTablesCount').innerText = total;
-    if (document.getElementById('activeTablesCount')) document.getElementById('activeTablesCount').innerText = activeCount;
-    if (document.getElementById('inactiveTablesCount')) document.getElementById('inactiveTablesCount').innerText = inactiveCount;
+    if (document.getElementById('statTotalTablesCount')) document.getElementById('statTotalTablesCount').innerText = total;
+    if (document.getElementById('statActiveTablesCount')) document.getElementById('statActiveTablesCount').innerText = activeCount;
+    if (document.getElementById('statInactiveTablesCount')) document.getElementById('statInactiveTablesCount').innerText = inactiveCount;
 }
         
 async function toggleTableActive(no, currentStatus) {
