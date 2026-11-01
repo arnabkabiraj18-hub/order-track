@@ -2043,12 +2043,10 @@
             document.getElementById('createZoneModal').classList.remove('flex');
         }
         
-async function saveNewZone() {
+        async function saveNewZone() {
     const zoneInput = document.getElementById('inputNewZoneName') || document.getElementById('zoneNameInput');
     const zoneName = zoneInput ? zoneInput.value.trim() : '';
     
-    console.log("Saving Zone:", zoneName); // Console-e check korar jonno
-
     if (!zoneName) {
         alert("Doya kore zone-er nam din.");
         return;
@@ -2065,27 +2063,25 @@ async function saveNewZone() {
             body: JSON.stringify({ zone: zoneName })
         });
 
-        const resData = await response.json();
-        console.log("Zone Server Response:", resData);
-
         if (response.ok) {
             if (zoneInput) zoneInput.value = '';
             
-            // Modal bondho korar function sothikvabe call kora
+            // Modal bondho kora
             if (typeof closeCreateZoneModal === 'function') closeCreateZoneModal();
             else if (typeof closeModal === 'function') closeModal();
             
-            // List refresh kora
+            // Notun zone bananor por sathe sathe fetch kore UI update kora
             if (typeof fetchZones === 'function') fetchZones();
             if (typeof fetchTables === 'function') fetchTables();
         } else {
-            alert(resData.error || "Zone save korte somossa hoyeche.");
+            const err = await response.json();
+            alert(err.error || "Zone save korte somossa hoyeche.");
         }
     } catch (e) {
         console.error("Zone save error:", e);
-        alert("Network ba server error hoyeche.");
     }
 }
+    
 
         function openAddTableModal() {
             updateZoneSelectDropdown();

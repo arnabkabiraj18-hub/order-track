@@ -595,10 +595,6 @@ app.post('/api/zones', verifySubscription, async (req, res) => {
             return res.status(400).json({ error: "Zone name is required." });
         }
 
-        // যেহেতু জোনগুলো আলাদা কোনো টেবিলে সেভ করার প্রয়োজন নেই (টেবিল ক্রিয়েট করার সময়ই জোন অ্যাসাইন হয়),
-        // তাই জোন সফলভাবে পাওয়ার রেসপন্সটি পাঠিয়ে দিলেই ফ্রন্টএন্ড বা জোন লিস্ট আপডেট হয়ে যাবে।
-        // আপনি চাইলে এখানে কুয়েরি বা ডেটাবেজ লজিক রাখতে পারেন, অথবা ডামি সাকসেস পাঠাতে পারেন:
-        
         res.json({ success: true, message: "Zone added successfully.", zone: zoneName });
     } catch (err) {
         console.error("❌ Add Zone Error:", err.message);
