@@ -1605,6 +1605,53 @@
             updateCategoryDropdownOptions(rawMenuItems);
         }
 
+        async function saveMenuItem(event) {
+    if (event) event.preventDefault();
+
+    // Apnar modal ba form-er input id-gulo anujayi field dhora
+    const nameInput = document.getElementById('modalItemName') || document.getElementById('inputMenuName');
+    const priceInput = document.getElementById('modalItemPrice') || document.getElementById('inputMenuPrice');
+    const categoryInput = document.getElementById('modalItemCategory') || document.getElementById('inputMenuCategory');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+    const category = categoryInput ? categoryInput.value.trim() : 'General';
+
+    if (!name) {
+        alert("Doya kore menu item-er nam din.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/menu`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ name, category, price, available: true })
+        });
+
+        if (response.ok) {
+            if (nameInput) nameInput.value = '';
+            if (priceInput) priceInput.value = '';
+            
+            // Modal bondho korar function
+            if (typeof closeItemModal === 'function') closeItemModal();
+            else if (typeof closeModal === 'function') closeModal();
+
+            // Menu list abar fetch kore screen update kora
+            fetchMenuItems();
+        } else {
+            const err = await response.json();
+            alert(err.error || "Menu item save korte somossa hoyeche.");
+        }
+    } catch (e) {
+        console.error("Menu save error:", e);
+    }
+}
+
         function updateCategoryDropdownOptions(items) {
             const select = document.getElementById('modalItemCategory');
             if (!select) return;
@@ -1950,13 +1997,23 @@
         }
 
         function filterTablesByZone(zone, btn) {
-            currentSelectedZone = zone;
-            document.querySelectorAll('.zone-pill').forEach(b => {
-                b.className = "zone-pill bg-surface-container-lowest text-on-surface-variant border border-outline-variant px-5 py-2 rounded-full font-semibold text-xs";
-            });
-            if(btn) btn.className = "zone-pill active bg-primary text-on-primary px-5 py-2 rounded-full font-bold text-xs shadow-sm";
-            renderTablesGrid(rawTables);
-        }
+    currentSelectedZone = zone;
+    
+    // জোন বাটনগুলোর অ্যাক্টিভ স্টাইল আপডেট করা
+    document.querySelectorAll('.zone-pill').forEach(b => {
+        b.classList.remove('active', 'bg-primary', 'text-on-primary');
+        b.classList.add('bg-surface-container-lowest', 'text-on-surface');
+    });
+    if (btn) {
+        btn.classList.add('active', 'bg-primary', 'text-on-primary');
+        btn.classList.remove('bg-surface-container-lowest', 'text-on-surface');
+    }
+
+    // rawTables থেকে ডেটা নিয়ে গ্রিড রেন্ডার করা
+    if (typeof rawTables !== 'undefined') {
+        renderTablesGrid(rawTables);
+    }
+}
 
         function updateZoneSelectDropdown() {
             const select = document.getElementById('inputNewTableZone');
@@ -2063,50 +2120,66 @@ async function saveNewZone() {
     }
 }
 
-        function renderTablesGrid(tables) {
-            const grid = document.getElementById('adminTablesGrid');
-            if(!grid) return;
-            grid.innerHTML = "";
-            const keys = Object.keys(tables);
+    
+function renderTablesGrid(tables) {
+    const grid = document.getElementById('adminTablesGrid');
+    if (!grid) return;
+    grid.innerHTML = "";
+    
+    const keys = Object.keys(tables || {});
+    
+    let total = keys.length;
+    let activeCount = 0;
+    let inactiveCount = 0;
 
-            keys.forEach(no => {
-                const t = tables[no];
-                const isActive = t.active !== false;
-                if(currentSelectedZone !== 'all' && (t.zone || 'Main Dining') !== currentSelectedZone) return;
-
-                const card = document.createElement('div');
-                card.className = `bg-surface-container-lowest rounded-2xl p-5 border border-surface-container-highest shadow-sm relative overflow-hidden flex flex-col justify-between h-48 transition-all ${!isActive ? 'opacity-60 bg-gray-50' : ''}`;
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-bold text-primary uppercase tracking-wider">${t.zone || 'Main Dining'}</span>
-                            <h3 class="font-display font-bold text-xl text-on-surface">Table ${no}</h3>
-                            <p class="text-xs text-on-surface-variant font-medium mt-0.5">${t.seats || 4} Seats Capacity</p>
-                        </div>
-                        <button type="button" onclick="toggleTableActive('${no}', ${isActive})" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isActive ? 'bg-secondary-container/50 text-secondary' : 'bg-red-100 text-error'} border ${isActive ? 'border-secondary/30' : 'border-error/30'}">
-                            <span class="w-2 h-2 rounded-full ${isActive ? 'bg-secondary' : 'bg-error'}"></span>
-                            <span>${isActive ? 'Active' : 'Inactive'}</span>
-                        </button>
-                    </div>
-
-                    <div class="flex items-center gap-2 pt-2 border-t border-surface-container-highest">
-                        <button type="button" onclick="openTableQRModal('${no}', '${t.zone || 'Main Dining'}')" class="flex-1 py-2.5 rounded-xl border border-primary text-primary hover:bg-primary/5 font-display font-bold text-xs flex items-center justify-center gap-1.5 transition-all">
-                            <span class="material-symbols-outlined text-base">qr_code_2</span> Print Standee
-                        </button>
-                        <button type="button" onclick="deleteTable('${no}')" title="Delete Table" class="w-10 h-10 rounded-xl border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all">
-                            <span class="material-symbols-outlined text-base">delete</span>
-                        </button>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+    keys.forEach(no => {
+        const t = tables[no];
+        // টেবিল অ্যাক্টিভ কি না তা নিখুঁতভাবে চেক করা
+        const isActive = t.active !== false && t.status !== 'inactive';
+        
+        if (isActive) {
+            activeCount++;
+        } else {
+            inactiveCount++;
         }
 
+        if (currentSelectedZone !== 'all' && (t.zone || 'Main Dining') !== currentSelectedZone) {
+            return; // জোন ফিল্টার না মিললে স্কিপ করবে
+        }
+
+        const card = document.createElement('div');
+        card.className = "bg-white p-4 rounded-xl border border-primary/20 shadow-sm flex flex-col justify-between";
+        card.innerHTML = `
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="font-bold text-base">Table ${t.table_no || no}</h4>
+                <span class="text-xs px-2 py-1 rounded ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}">${isActive ? 'Active' : 'Inactive'}</span>
+            </div>
+            <p class="text-xs text-gray-500 mb-4">Zone: ${t.zone || 'Main Dining'}</p>
+            <div class="flex items-center gap-2 pt-2 border-t border-surface-bright">
+                <button onclick="toggleTableActive('${t.table_no || no}', ${isActive})" class="px-3 py-1.5 border rounded-lg text-xs font-semibold ${isActive ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-600 border-green-200'}">
+                    ${isActive ? 'Deactivate' : 'Activate'}
+                </button>
+                <button onclick="openTableQRModal('${t.table_no || no}', '${t.zone || 'Main'}')" class="flex-1 bg-primary text-white py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
+                    <span class="material-symbols-outlined text-base">qr_code</span> QR
+                </button>
+                <button onclick="deleteTable('${t.table_no || no}')" title="Delete Table" class="p-1.5 border rounded-lg text-gray-500 hover:text-red-600">
+                    <span class="material-symbols-outlined text-base">delete</span>
+                </button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    // 🚀 কাউন্টারগুলো সরাসরি আপডেট করার কোড (যা জিরো হয়ে থাকত)
+    if (document.getElementById('totalTablesCount')) document.getElementById('totalTablesCount').innerText = total;
+    if (document.getElementById('activeTablesCount')) document.getElementById('activeTablesCount').innerText = activeCount;
+    if (document.getElementById('inactiveTablesCount')) document.getElementById('inactiveTablesCount').innerText = inactiveCount;
+}
         
-async function toggleTableActive(tableNo, currentStatus) {
-    const newStatus = (currentStatus === false || currentStatus === 'inactive') ? true : false;
+async function toggleTableActive(no, currentStatus) {
+    const newStatus = !currentStatus; // True থাকলে False এবং False থাকলে True হবে
     try {
-        const res = await fetch(`${API_BASE_URL}/api/tables/${tableNo}/status`, {
+        const res = await fetch(`${API_BASE_URL}/api/tables/${no}/status`, {
             method: 'PATCH',
             headers: { 
                 'Content-Type': 'application/json',
@@ -2117,7 +2190,6 @@ async function toggleTableActive(tableNo, currentStatus) {
         });
         if(res.ok) {
             if(typeof fetchTables === 'function') fetchTables();
-            else location.reload();
         } else {
             alert("টেবিল স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে।");
         }
@@ -2729,96 +2801,6 @@ if ('serviceWorker' in navigator) {
     appSocket.on('disconnect', (reason) => {
         console.warn('⚠️ ইন্টারনেট কানেকশন স্লো বা বিচ্ছিন্ন: ', reason);
     });
-</script>
-<script>
-// ইউনিভার্সাল মেনু সেভ হ্যান্ডলার - যেকোনো ফর্ম বা মোডালের জন্য কাজ করবে
-document.addEventListener('DOMContentLoaded', () => {
-    // মেনু ফর্মগুলো স্বয়ংক্রিয়ভাবে ধরে সাবমিট আটকানো এবং ডেটা পাঠানো
-    const menuForms = document.querySelectorAll('form');
-    menuForms.forEach(form => {
-        if (form.innerHTML.includes('price') || form.innerHTML.includes('Menu') || form.innerHTML.includes('category')) {
-            form.onsubmit = async function(e) {
-                e.preventDefault();
-                
-                // ফর্মের ভেতর থেকে যেকোনো ইনপুট বা সিলেক্ট ফিল্ড খুঁজে বের করা
-                const inputs = form.querySelectorAll('input, select');
-                let name = '', price = 0, category = 'General';
-
-                inputs.forEach(input => {
-                    const val = input.value.trim();
-                    const nameAttr = (input.name || input.id || '').toLowerCase();
-                    
-                    if (!val) return;
-                    
-                    if (nameAttr.includes('name') || nameAttr.includes('item')) {
-                        name = val;
-                    } else if (nameAttr.includes('price') || nameAttr.includes('rate')) {
-                        price = parseFloat(val) || 0;
-                    } else if (nameAttr.includes('cat') || input.tagName === 'SELECT') {
-                        category = val;
-                    } else if (!name && isNaN(val)) {
-                        name = val; // ফলব্যাক হিসেবে প্রথম টেক্সট ইনপুটটি নাম ধরবে
-                    } else if (price === 0 && !isNaN(val)) {
-                        price = parseFloat(val) || 0; // ফলব্যাক হিসেবে প্রথম সংখ্যাটি দাম ধরবে
-                    }
-                });
-
-                if (!name) {
-                    alert("দয়া করে মেনু আইটেমের নাম লিখুন।");
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/menu`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-restaurant-id': RESTAURANT_ID,
-                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                        },
-                        body: JSON.stringify({ name, category, price, available: true })
-                    });
-
-                    if (response.ok) {
-                        form.reset();
-                        // মোডাল বন্ধ করার চেষ্টা
-                        const modals = document.querySelectorAll('.fixed, .modal, [id*="modal"]');
-                        modals.forEach(m => m.classList.add('hidden'));
-
-                        // মেনু লিস্ট রিফ্রেশ করা
-                        if (typeof fetchMenu === 'function') fetchMenu();
-                        else if (typeof loadMenu === 'function') loadMenu();
-                        else location.reload();
-                    } else {
-                        const err = await response.json();
-                        alert(err.error || "মেনু আইটেম সেভ করতে সমস্যা হয়েছে।");
-                    }
-                } catch (err) {
-                    console.error("Menu save error:", err);
-                }
-            };
-        }
-    });
-});
-</script>
-<script>
-// আগের ভেরিয়েবল রিডিক্লেয়ার এড়াতে সরাসরি উইন্ডো অবজেক্ট ব্যবহার করা হলো
-window.originalRenderTablesGrid = window.originalRenderTablesGrid || window.renderTablesGrid || function(){};
-window.renderTablesGrid = function(tablesData) {
-    const list = Array.isArray(tablesData) ? tablesData : Object.values(tablesData || {});
-    
-    let total = list.length;
-    let active = list.filter(t => t.active !== false && t.status !== 'inactive').length;
-    let inactive = total - active;
-
-    if(document.getElementById('totalTablesCount')) document.getElementById('totalTablesCount').innerText = total;
-    if(document.getElementById('activeTablesCount')) document.getElementById('activeTablesCount').innerText = active;
-    if(document.getElementById('inactiveTablesCount')) document.getElementById('inactiveTablesCount').innerText = inactive;
-
-    if(typeof window.originalRenderTablesGrid === 'function') {
-        window.originalRenderTablesGrid(tablesData);
-    }
-};
 </script>
 </body>
 </html>
