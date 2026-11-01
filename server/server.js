@@ -586,14 +586,20 @@ const getZonesHandler = async (req, res) => {
 app.get('/api/zones', verifySubscription, getZonesHandler);
 app.get('/api/zones/:restaurantId', verifySubscription, getZonesHandler);
 
+// ১. জোন সেভ করার সঠিক ব্যাকএন্ড রাউট (ডাটাবেজ সহ)
 app.post('/api/zones', verifySubscription, async (req, res) => {
     try {
         const zoneName = req.body?.zone || req.body?.zone_name || req.body?.name;
+        const restaurantId = req.headers['x-restaurant-id'];
+
         if (!zoneName) {
             return res.status(400).json({ error: "Zone name is required." });
         }
-        
-        // জোন সফলভাবে অ্যাড হওয়ার রেসপন্স পাঠানো হচ্ছে
+
+        // ডাটাবেজে জোন সেভ করার কুয়েরি (আপনার প্রজেক্টের টেবিল স্ট্রাকচার অনুযায়ী)
+        const query = `INSERT INTO zones (restaurant_id, zone_name) VALUES (?, ?)`;
+        await pool.query(query, [restaurantId, zoneName]); // অথবা আপনার প্রজেক্টে db.run থাকলে সেটি ব্যবহার করবেন
+
         res.json({ success: true, message: "Zone added successfully.", zone: zoneName });
     } catch (err) {
         console.error("❌ Add Zone Error:", err.message);
