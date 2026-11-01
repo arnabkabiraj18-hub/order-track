@@ -1907,21 +1907,29 @@
 
         async function fetchZones() {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/zones`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
-        if(res.ok) {
+        const res = await fetch(`${API_BASE_URL}/api/zones`, { 
+            headers: { 'x-restaurant-id': RESTAURANT_ID } 
+        });
+        if (res.ok) {
             const data = await res.json();
-            const zones = data.zones || ['Main'];
+            console.log("Fetched Zones Data:", data); // Console-e dekhun ki asche
             
-            // Render Zone Filter Buttons on UI
-            const zoneContainer = document.getElementById('adminZoneFilterContainer');
-            if(zoneContainer) {
-                zoneContainer.innerHTML = `<button onclick="filterTablesByZone('all', this)" class="zone-pill active">All Zones</button>`;
+            // Server data array ba object ja-i hok na keno sothikvabe dhora
+            const zones = Array.isArray(data) ? data : (data.zones || data.data || ['Main Dining']);
+            
+            const zoneContainer = document.getElementById('adminZoneFilterContainer') || document.querySelector('.zone-container');
+            if (zoneContainer) {
+                zoneContainer.innerHTML = `<button onclick="filterTablesByZone('all', this)" class="zone-pill active px-4 py-2 rounded-full text-xs font-semibold bg-primary text-white">All Zones</button>`;
+                
                 zones.forEach(z => {
-                    zoneContainer.innerHTML += `<button onclick="filterTablesByZone('${z}', this)" class="zone-pill">${z}</button>`;
+                    const zoneName = typeof z === 'object' ? (z.zone_name || z.zone) : z;
+                    zoneContainer.innerHTML += `<button onclick="filterTablesByZone('${zoneName}', this)" class="zone-pill px-4 py-2 rounded-full text-xs font-semibold bg-surface-container-lowest text-on-surface border">${zoneName}</button>`;
                 });
             }
         }
-    } catch(e) {}
+    } catch (e) {
+        console.error("Fetch zones error:", e);
+    }
 }
 
         async function fetchTables() {
@@ -2062,7 +2070,6 @@ async function saveNewZone() {
 
         if (response.ok) {
             if (zoneInput) zoneInput.value = '';
-            location.reload()
             
             // Modal bondho korar function sothikvabe call kora
             if (typeof closeCreateZoneModal === 'function') closeCreateZoneModal();
