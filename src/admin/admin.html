@@ -2062,6 +2062,7 @@ async function saveNewZone() {
 
         if (response.ok) {
             if (zoneInput) zoneInput.value = '';
+            location.reload()
             
             // Modal bondho korar function sothikvabe call kora
             if (typeof closeCreateZoneModal === 'function') closeCreateZoneModal();
