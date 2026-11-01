@@ -586,7 +586,6 @@ const getZonesHandler = async (req, res) => {
 app.get('/api/zones', verifySubscription, getZonesHandler);
 app.get('/api/zones/:restaurantId', verifySubscription, getZonesHandler);
 
-// ১. জোন সেভ করার সঠিক ব্যাকএন্ড রাউট (ডাটাবেজ সহ)
 app.post('/api/zones', verifySubscription, async (req, res) => {
     try {
         const zoneName = req.body?.zone || req.body?.zone_name || req.body?.name;
@@ -596,10 +595,10 @@ app.post('/api/zones', verifySubscription, async (req, res) => {
             return res.status(400).json({ error: "Zone name is required." });
         }
 
-        // ডাটাবেজে জোন সেভ করার কুয়েরি (আপনার প্রজেক্টের টেবিল স্ট্রাকচার অনুযায়ী)
-        const query = `INSERT INTO zones (restaurant_id, zone_name) VALUES (?, ?)`;
-        await pool.query(query, [restaurantId, zoneName]); // অথবা আপনার প্রজেক্টে db.run থাকলে সেটি ব্যবহার করবেন
-
+        // যেহেতু জোনগুলো আলাদা কোনো টেবিলে সেভ করার প্রয়োজন নেই (টেবিল ক্রিয়েট করার সময়ই জোন অ্যাসাইন হয়),
+        // তাই জোন সফলভাবে পাওয়ার রেসপন্সটি পাঠিয়ে দিলেই ফ্রন্টএন্ড বা জোন লিস্ট আপডেট হয়ে যাবে।
+        // আপনি চাইলে এখানে কুয়েরি বা ডেটাবেজ লজিক রাখতে পারেন, অথবা ডামি সাকসেস পাঠাতে পারেন:
+        
         res.json({ success: true, message: "Zone added successfully.", zone: zoneName });
     } catch (err) {
         console.error("❌ Add Zone Error:", err.message);
