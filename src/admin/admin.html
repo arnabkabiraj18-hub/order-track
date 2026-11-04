@@ -2082,16 +2082,42 @@
     }
 }
     
-
-        async function openAddTableModal() {
-    if (typeof fetchZones === 'function') {
-        await fetchZones(); // মোডাল খোলার আগে সার্ভার থেকে সব জোন ফেচ করে আপডেট করবে
-    } else if (typeof updateZoneSelectDropdown === 'function') {
-        updateZoneSelectDropdown();
+async function openAddTableModal() {
+    // ১. প্রথমে মোডালটি ওপেন করি যাতে ইউআই তৎক্ষণাৎ চলে আসে
+    const modal = document.getElementById('addTableModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
     }
-    
-    document.getElementById('addTableModal').classList.remove('hidden');
-    document.getElementById('addTableModal').classList.add('flex');
+
+    // ২. সার্ভার থেকে লেটেস্ট জোনগুলো ফেচ করে ড্রপডাউনে বসিয়ে দেওয়া
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/zones`, { 
+            headers: { 
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            } 
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            const zones = Array.isArray(data) ? data : (data.zones || data.data || ['Main Dining']);
+            
+            const zoneDropdown = document.getElementById('inputNewTableZone') || document.getElementById('modalTableZone');
+            if (zoneDropdown) {
+                zoneDropdown.innerHTML = ''; // আগের অপশনগুলো ক্লিয়ার করা
+                zones.forEach(z => {
+                    const zoneName = typeof z === 'object' ? (z.zone_name || z.zone) : z;
+                    const opt = document.createElement('option');
+                    opt.value = zoneName;
+                    opt.innerText = zoneName;
+                    zoneDropdown.appendChild(opt);
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Dropdown zone fetch error:", e);
+    }
 }
         function closeAddTableModal() {
             document.getElementById('addTableModal').classList.add('hidden');
