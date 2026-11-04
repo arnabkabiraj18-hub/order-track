@@ -2083,11 +2083,16 @@
 }
     
 
-        function openAddTableModal() {
-            updateZoneSelectDropdown();
-            document.getElementById('addTableModal').classList.remove('hidden');
-            document.getElementById('addTableModal').classList.add('flex');
-        }
+        async function openAddTableModal() {
+    if (typeof fetchZones === 'function') {
+        await fetchZones(); // মোডাল খোলার আগে সার্ভার থেকে সব জোন ফেচ করে আপডেট করবে
+    } else if (typeof updateZoneSelectDropdown === 'function') {
+        updateZoneSelectDropdown();
+    }
+    
+    document.getElementById('addTableModal').classList.remove('hidden');
+    document.getElementById('addTableModal').classList.add('flex');
+}
         function closeAddTableModal() {
             document.getElementById('addTableModal').classList.add('hidden');
             document.getElementById('addTableModal').classList.remove('flex');
