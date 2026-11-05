@@ -1592,18 +1592,36 @@
         }
 
         async function fetchMenuItems() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/menu`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
-                if(res.ok) {
-                    const list = await res.json();
-                    rawMenuItems = {};
-                    list.forEach(item => { rawMenuItems[item.id] = item; });
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/menu`, { 
+            headers: { 
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            } 
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            
+            // ব্যাকএন্ড থেকে অ্যারে বা অবজেক্ট যাই আসুক তা নিরাপদে ফিল্টার করা
+            const items = Array.isArray(data) ? data : (data.menu || data.data || data.items || []);
+            
+            rawMenuItems = {};
+            items.forEach(item => {
+                if (item && item.id) {
+                    rawMenuItems[item.id] = item;
                 }
-            } catch(e) {}
-            renderAdminMenuTable(rawMenuItems);
-            renderCategoryFilters(rawMenuItems);
-            updateCategoryDropdownOptions(rawMenuItems);
-        }     
+            });
+            
+            // রেন্ডারিং ফাংশনগুলো কল করা
+            if (typeof renderAdminMenuTable === 'function') renderAdminMenuTable(rawMenuItems);
+            if (typeof renderCategoryFilters === 'function') renderCategoryFilters(rawMenuItems);
+            if (typeof updateCategoryDropdownOptions === 'function') updateCategoryDropdownOptions(rawMenuItems);
+        }
+    } catch (e) {
+        console.error("Fetch menu error:", e);
+    }
+}
 
         function updateCategoryDropdownOptions(items) {
             const select = document.getElementById('modalItemCategory');
