@@ -1603,54 +1603,7 @@
             renderAdminMenuTable(rawMenuItems);
             renderCategoryFilters(rawMenuItems);
             updateCategoryDropdownOptions(rawMenuItems);
-        }
-
-        async function saveMenuItem(event) {
-    if (event) event.preventDefault();
-
-    // Apnar modal ba form-er input id-gulo anujayi field dhora
-    const nameInput = document.getElementById('modalItemName') || document.getElementById('inputMenuName');
-    const priceInput = document.getElementById('modalItemPrice') || document.getElementById('inputMenuPrice');
-    const categoryInput = document.getElementById('modalItemCategory') || document.getElementById('inputMenuCategory');
-
-    const name = nameInput ? nameInput.value.trim() : '';
-    const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
-    const category = categoryInput ? categoryInput.value.trim() : 'General';
-
-    if (!name) {
-        alert("Doya kore menu item-er nam din.");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/menu`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-restaurant-id': RESTAURANT_ID,
-                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-            },
-            body: JSON.stringify({ name, category, price, available: true })
-        });
-
-        if (response.ok) {
-            if (nameInput) nameInput.value = '';
-            if (priceInput) priceInput.value = '';
-            
-            // Modal bondho korar function
-            if (typeof closeItemModal === 'function') closeItemModal();
-            else if (typeof closeModal === 'function') closeModal();
-
-            // Menu list abar fetch kore screen update kora
-            fetchMenuItems();
-        } else {
-            const err = await response.json();
-            alert(err.error || "Menu item save korte somossa hoyeche.");
-        }
-    } catch (e) {
-        console.error("Menu save error:", e);
-    }
-}
+        }     
 
         function updateCategoryDropdownOptions(items) {
             const select = document.getElementById('modalItemCategory');

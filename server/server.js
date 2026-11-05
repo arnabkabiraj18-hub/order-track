@@ -754,13 +754,23 @@ app.get('/api/menu/:restaurantId', verifySubscription, getMenuHandler);
 app.post('/api/menu', verifySubscription, async (req, res) => {
     try {
         const { name, category, price, available, isAvailable } = req.body;
+        
+        // হেডার বা মিডলওয়্যার থেকে restaurant_id নিরাপদে সংগ্রহ করা
+        const restaurantId = req.headers['x-restaurant-id'] || req.restaurantId;
+
+        if (!name) {
+            return res.status(400).json({ error: "Menu item name is required." });
+        }
+
         const result = await pool.query(
             `INSERT INTO menu_items (restaurant_id, name, category, price, available) 
              VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [req.restaurantId, name, category || 'General', price || 0, available ?? isAvailable ?? true]
+            [restaurantId, name, category || 'General', price || 0, available ?? isAvailable ?? true]
         );
+
         res.status(201).json({ success: true, item: result.rows[0], data: result.rows[0] });
     } catch (err) {
+        console.error("❌ Add Menu Error:", err.message);
         res.status(500).json({ error: "Failed to add menu item." });
     }
 });
