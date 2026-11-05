@@ -648,16 +648,36 @@
 
         // 3. LIVE MENU RENDERER (FROM PostgreSQL)
         async function fetchMenuItems() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/menu`, { headers: { 'x-restaurant-id': RESTAURANT_ID } });
-                if (res.ok) {
-                    const list = await res.json();
-                    rawMenuItems = {};
-                    list.forEach(item => { rawMenuItems[item.id] = item; });
-                    renderMenuUI(rawMenuItems);
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/menu`, { 
+            headers: { 
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            } 
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            
+            // Backend theke array ba object ja-i asuk take নিরাপদে handle kora
+            const items = Array.isArray(data) ? data : (data.menu || data.data || data.items || []);
+            
+            rawMenuItems = {};
+            items.forEach(item => {
+                if (item && item.id) {
+                    rawMenuItems[item.id] = item;
                 }
-            } catch(e) {}
+            });
+            
+            // Customer menu UI render function call kora
+            if (typeof renderMenuUI === 'function') {
+                renderMenuUI(rawMenuItems);
+            }
         }
+    } catch (e) {
+        console.error("Customer fetch menu error:", e);
+    }
+}
 
         function renderMenuUI(menuObj) {
             const menuContainer = document.getElementById('menuListContainer');

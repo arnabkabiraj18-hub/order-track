@@ -1765,27 +1765,42 @@
         }
 
         async function toggleItemStock(key, currentStatus) {
-            try {
-                await fetch(`${API_BASE_URL}/api/menu/${key}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'x-restaurant-id': RESTAURANT_ID },
-                    body: JSON.stringify({ available: !currentStatus })
-                });
-                fetchMenuItems();
-            } catch(e) {}
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/menu/${key}`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({ available: !currentStatus })
+        });
+        if (res.ok) {
+            fetchMenuItems();
         }
+    } catch (e) {
+        console.error("Stock toggle error:", e);
+    }
+}
 
-        async function deleteMenuItem(key) {
-            if(confirm("Are you sure you want to remove this dish?")) {
-                try {
-                    await fetch(`${API_BASE_URL}/api/menu/${key}`, {
-                        method: 'DELETE',
-                        headers: { 'x-restaurant-id': RESTAURANT_ID }
-                    });
-                    fetchMenuItems();
-                } catch(e) {}
+        async function deleteMenuKey(key) {
+    if (confirm("Are you sure you want to remove this dish?")) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/menu/${key}`, {
+                method: 'DELETE',
+                headers: { 
+                    'x-restaurant-id': RESTAURANT_ID,
+                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                }
+            });
+            if (res.ok) {
+                fetchMenuItems();
             }
+        } catch (e) {
+            console.error("Delete menu error:", e);
         }
+    }
+}
 
         function addNewAddonField(nameVal = "", priceVal = "") {
             const container = document.getElementById('addonsInputContainer');
