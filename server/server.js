@@ -775,6 +775,73 @@ app.post('/api/menu', verifySubscription, async (req, res) => {
     }
 });
 
+app.patch('/api/menu/:id', verifySubscription, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, category, price, available, isAvailable, diet_type, description, image_url, is_pantry, addons } = req.body;
+        const restaurantId = req.headers['x-restaurant-id'] || req.restaurantId;
+        const availVal = available !== undefined ? available : isAvailable;
+
+        const result = await pool.query(
+            `UPDATE menu_items SET
+                name = COALESCE($1, name),
+                category = COALESCE($2, category),
+                price = COALESCE($3, price),
+                available = COALESCE($4, available),
+                diet_type = COALESCE($5, diet_type),
+                description = COALESCE($6, description),
+                image_url = COALESCE($7, image_url),
+                is_pantry = COALESCE($8, is_pantry),
+                addons = COALESCE($9::jsonb, addons)
+             WHERE id = $10 AND restaurant_id = $11
+             RETURNING *`,
+            [
+                name ?? null,
+                category ?? null,
+                price !== undefined ? price : null,
+                availVal !== undefined ? availVal : null,
+                diet_type ?? null,
+                description ?? null,
+                image_url ?? null,
+                is_pantry !== undefined ? is_pantry : null,
+                addons !== undefined ? JSON.stringify(addons) : null,
+                id,
+                restaurantId
+            ]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Menu item not found" });
+        }
+
+        res.json({ success: true, item: result.rows[0], data: result.rows[0] });
+    } catch (err) {
+        console.error("Update Menu Error:", err.message);
+        res.status(500).json({ error: "Failed to update menu item." });
+    }
+});
+
+app.delete('/api/menu/:id', verifySubscription, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const restaurantId = req.headers['x-restaurant-id'] || req.restaurantId;
+
+        const result = await pool.query(
+            `DELETE FROM menu_items WHERE id = $1 AND restaurant_id = $2 RETURNING id`,
+            [id, restaurantId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Menu item not found" });
+        }
+
+        res.json({ success: true, message: "Menu item deleted successfully." });
+    } catch (err) {
+        console.error("Delete Menu Error:", err.message);
+        res.status(500).json({ error: "Failed to delete menu item." });
+    }
+});
+
 app.get('/api/orders', verifySubscription, async (req, res) => {
     try {
         const status = req.query.status;
