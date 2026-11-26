@@ -778,7 +778,7 @@ app.post('/api/menu', verifySubscription, async (req, res) => {
 app.patch('/api/menu/:id', verifySubscription, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, category, price, available, isAvailable, diet_type, description, image_url, is_pantry, addons } = req.body;
+        const { name, category, price, available, isAvailable } = req.body;
         const restaurantId = req.headers['x-restaurant-id'] || req.restaurantId;
         const availVal = available !== undefined ? available : isAvailable;
 
@@ -786,15 +786,22 @@ app.patch('/api/menu/:id', verifySubscription, async (req, res) => {
         const values = [];
         let idx = 1;
 
-        if (name !== undefined) { fields.push(`name = $${idx++}`); values.push(name); }
-        if (category !== undefined) { fields.push(`category = $${idx++}`); values.push(category); }
-        if (price !== undefined && !Number.isNaN(Number(price))) { fields.push(`price = $${idx++}`); values.push(Number(price)); }
-        if (availVal !== undefined) { fields.push(`available = $${idx++}`); values.push(Boolean(availVal)); }
-        if (diet_type !== undefined) { fields.push(`diet_type = $${idx++}`); values.push(diet_type); }
-        if (description !== undefined) { fields.push(`description = $${idx++}`); values.push(description); }
-        if (image_url !== undefined) { fields.push(`image_url = $${idx++}`); values.push(image_url); }
-        if (is_pantry !== undefined) { fields.push(`is_pantry = $${idx++}`); values.push(Boolean(is_pantry)); }
-        if (addons !== undefined) { fields.push(`addons = $${idx++}`); values.push(JSON.stringify(addons)); }
+        if (name !== undefined && name !== '') {
+            fields.push(`name = $${idx++}`);
+            values.push(name);
+        }
+        if (category !== undefined && category !== '') {
+            fields.push(`category = $${idx++}`);
+            values.push(category);
+        }
+        if (price !== undefined && !Number.isNaN(Number(price))) {
+            fields.push(`price = $${idx++}`);
+            values.push(Number(price));
+        }
+        if (availVal !== undefined) {
+            fields.push(`available = $${idx++}`);
+            values.push(Boolean(availVal));
+        }
 
         if (fields.length === 0) {
             return res.status(400).json({ error: "Nothing to update" });
