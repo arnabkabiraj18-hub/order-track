@@ -782,32 +782,32 @@ app.patch('/api/menu/:id', verifySubscription, async (req, res) => {
         const restaurantId = req.headers['x-restaurant-id'] || req.restaurantId;
         const availVal = available !== undefined ? available : isAvailable;
 
+        const fields = [];
+        const values = [];
+        let idx = 1;
+
+        if (name !== undefined) { fields.push(`name = $${idx++}`); values.push(name); }
+        if (category !== undefined) { fields.push(`category = $${idx++}`); values.push(category); }
+        if (price !== undefined && !Number.isNaN(Number(price))) { fields.push(`price = $${idx++}`); values.push(Number(price)); }
+        if (availVal !== undefined) { fields.push(`available = $${idx++}`); values.push(Boolean(availVal)); }
+        if (diet_type !== undefined) { fields.push(`diet_type = $${idx++}`); values.push(diet_type); }
+        if (description !== undefined) { fields.push(`description = $${idx++}`); values.push(description); }
+        if (image_url !== undefined) { fields.push(`image_url = $${idx++}`); values.push(image_url); }
+        if (is_pantry !== undefined) { fields.push(`is_pantry = $${idx++}`); values.push(Boolean(is_pantry)); }
+        if (addons !== undefined) { fields.push(`addons = $${idx++}`); values.push(JSON.stringify(addons)); }
+
+        if (fields.length === 0) {
+            return res.status(400).json({ error: "Nothing to update" });
+        }
+
+        values.push(id);
+        const idParam = idx++;
+        values.push(restaurantId);
+        const restParam = idx++;
+
         const result = await pool.query(
-            `UPDATE menu_items SET
-                name = COALESCE($1, name),
-                category = COALESCE($2, category),
-                price = COALESCE($3, price),
-                available = COALESCE($4, available),
-                diet_type = COALESCE($5, diet_type),
-                description = COALESCE($6, description),
-                image_url = COALESCE($7, image_url),
-                is_pantry = COALESCE($8, is_pantry),
-                addons = COALESCE($9::jsonb, addons)
-             WHERE id = $10 AND restaurant_id = $11
-             RETURNING *`,
-            [
-                name ?? null,
-                category ?? null,
-                price !== undefined ? price : null,
-                availVal !== undefined ? availVal : null,
-                diet_type ?? null,
-                description ?? null,
-                image_url ?? null,
-                is_pantry !== undefined ? is_pantry : null,
-                addons !== undefined ? JSON.stringify(addons) : null,
-                id,
-                restaurantId
-            ]
+            `UPDATE menu_items SET ${fields.join(', ')} WHERE id = $${idParam} AND restaurant_id = $${restParam} RETURNING *`,
+            values
         );
 
         if (result.rowCount === 0) {
@@ -817,7 +817,7 @@ app.patch('/api/menu/:id', verifySubscription, async (req, res) => {
         res.json({ success: true, item: result.rows[0], data: result.rows[0] });
     } catch (err) {
         console.error("Update Menu Error:", err.message);
-        res.status(500).json({ error: "Failed to update menu item." });
+        res.status(500).json({ error: err.message || "Failed to update menu item." });
     }
 });
 

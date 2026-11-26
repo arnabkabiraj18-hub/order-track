@@ -1765,23 +1765,30 @@
         }
 
         async function toggleItemStock(key, currentStatus) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/menu/${key}`, {
-                    method: 'PATCH',
-                    headers: {
-                    'Content-Type': 'application/json',
-                    'x-restaurant-id': RESTAURANT_ID,
-                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-             },
-                 body: JSON.stringify({ available: !currentStatus })
-            });
-            if (res.ok) {
-                fetchMenuItems();
-            }
-            } catch (e) {
-                console.error("Stock toggle error:", e);
-            }
+    try {
+        const nextStatus = !currentStatus;
+        const res = await fetch(`${API_BASE_URL}/api/menu/${key}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-restaurant-id': RESTAURANT_ID,
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            body: JSON.stringify({
+                available: nextStatus,
+                isAvailable: nextStatus
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            fetchMenuItems();
+        } else {
+            alert(data.error || "Stock update hoyni");
         }
+    } catch (e) {
+        console.error("Stock toggle error:", e);
+    }
+}
 
         async function deleteMenuKey(key) {
     if (confirm("Are you sure you want to remove this dish?")) {
