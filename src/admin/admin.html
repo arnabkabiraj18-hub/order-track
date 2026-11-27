@@ -1702,13 +1702,18 @@ function syncCategorySelects(items = rawMenuItems, selectedValue = '') {
     }
 }
 
-        function saveCustomCategoryInline() {
+        function saveCustomCategoryInline(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
     const input = document.getElementById('customCatInput');
     const catName = input ? input.value.trim() : '';
-    console.log("Saving category:", catName, "Input found:", !!input);
 
     if (!catName) {
         alert("ক্যাটাগরির নাম লিখুন।");
+        if (input) input.focus();
         return;
     }
 
@@ -1736,6 +1741,11 @@ function syncCategorySelects(items = rawMenuItems, selectedValue = '') {
 
     if (typeof renderCategoryFilters === 'function') {
         renderCategoryFilters(rawMenuItems);
+    }
+
+    // প্রাইস ফিল্ডে যেন অটোমেটিক ফোকাস না যায়, তাই ক্যাটাগরি ড্রপডাউনে ফোকাস রাখুন
+    if (select) {
+        select.focus();
     }
 }
 
