@@ -1647,21 +1647,81 @@
             }
         }
 
-        function saveCustomCategoryInline() {
-            const input = document.getElementById('customCatInput');
-            const catName = input.value.trim();
-            if(!catName) return alert("Please type a category name!");
-            
-            const select = document.getElementById('modalItemCategory');
-            const opt = document.createElement('option');
-            opt.value = catName; opt.innerText = catName;
-            select.appendChild(opt);
-            select.value = catName;
+        function getAllCategories(items = rawMenuItems) {
+    const savedCats = JSON.parse(localStorage.getItem('customMenuCategories') || '[]');
+    const set = new Set(Array.isArray(savedCats) ? savedCats : []);
 
-            input.value = "";
-            document.getElementById('customCatBox').classList.add('hidden');
-            alert(`✅ '${catName}' ক্যাটাগরি তৈরি ও সিলেক্ট করা হয়েছে!`);
+    Object.values(items || {}).forEach(item => {
+        if (item && item.category) {
+            set.add(String(item.category).trim());
         }
+    });
+
+    return Array.from(set).filter(Boolean);
+}
+
+function syncCategorySelects(items = rawMenuItems, selectedValue = '') {
+    const categories = getAllCategories(items);
+    const selectEl = document.getElementById('category');
+
+    if (selectEl) {
+        const currentVal = selectedValue || selectEl.value;
+        const existingOptions = Array.from(selectEl.options).map(o => o.value);
+        const merged = Array.from(new Set([...existingOptions, ...categories].filter(Boolean)));
+
+        selectEl.innerHTML = merged
+            .map(cat => `<option value="${cat}">${cat}</option>`)
+            .join('');
+
+        if (currentVal && merged.includes(currentVal)) {
+            selectEl.value = currentVal;
+        }
+    }
+
+    if (typeof renderCategoryFilters === 'function') {
+        renderCategoryFilters(items);
+    }
+    if (typeof updateCategoryDropdownOptions === 'function') {
+        updateCategoryDropdownOptions(items);
+    }
+}
+
+       function saveCustomCategoryInline() {
+    const input = document.getElementById('customCatInput');
+    const catName = input ? input.value.trim() : '';
+    if (!catName) {
+        alert("Please type a category name!");
+        return;
+    }
+
+    const select = document.getElementById('category') || document.getElementById('modalDishCategory');
+    if (select) {
+        const exists = Array.from(select.options).some(opt => opt.value.toLowerCase() === catName.toLowerCase());
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = catName;
+            opt.textContent = catName;
+            select.appendChild(opt);
+        }
+        select.value = catName;
+    }
+
+    const savedCats = JSON.parse(localStorage.getItem('customMenuCategories') || '[]');
+    if (!savedCats.some(c => c.toLowerCase() === catName.toLowerCase())) {
+        savedCats.push(catName);
+        localStorage.setItem('customMenuCategories', JSON.stringify(savedCats));
+    }
+
+    if (input) input.value = '';
+    const box = document.getElementById('customCatBox');
+    if (box) box.classList.add('hidden');
+
+    if (typeof renderCategoryFilters === 'function') {
+        renderCategoryFilters(rawMenuItems);
+    }
+
+    alert(`"${catName}" ক্যাটাগরি তৈরি ও সিলেক্ট করা হয়েছে!`);
+}
 
         function renderCategoryFilters(items) {
             const container = document.getElementById('adminCategoryFilters');
