@@ -1623,21 +1623,37 @@
     }
 }
 
-        function updateCategoryDropdownOptions(items) {
-            const select = document.getElementById('modalItemCategory');
-            if (!select) return;
-            const defaultCats = ['Mains', 'Starters', 'Beverages', 'Desserts'];
-            const allCats = new Set(defaultCats);
-            Object.values(items).forEach(i => { if(i.category) allCats.add(i.category); });
-            const currentVal = select.value;
-            select.innerHTML = "";
-            allCats.forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat; opt.innerText = cat;
-                select.appendChild(opt);
-            });
-            if(allCats.has(currentVal)) select.value = currentVal;
+       function updateCategoryDropdownOptions(items = rawMenuItems) {
+    const select = document.getElementById('category') || document.getElementById('modalItemCategory');
+    if (!select) return;
+
+    const currentVal = select.value;
+    const defaultCats = ['Mains', 'Starters', 'Beverages', 'Desserts'];
+    const savedCats = JSON.parse(localStorage.getItem('customMenuCategories') || '[]');
+    const allCats = new Set([
+        ...defaultCats,
+        ...(Array.isArray(savedCats) ? savedCats : [])
+    ]);
+
+    Object.values(items || {}).forEach(item => {
+        if (item && item.category) {
+            allCats.add(String(item.category).trim());
         }
+    });
+
+    select.innerHTML = '';
+    allCats.forEach(cat => {
+        if (!cat) return;
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.innerText = cat;
+        select.appendChild(opt);
+    });
+
+    if (currentVal && allCats.has(currentVal)) {
+        select.value = currentVal;
+    }
+}
 
         function toggleCustomCatField() {
             const box = document.getElementById('customCatBox');
