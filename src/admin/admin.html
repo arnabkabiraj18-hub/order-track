@@ -1702,11 +1702,13 @@ function syncCategorySelects(items = rawMenuItems, selectedValue = '') {
     }
 }
 
-       function saveCustomCategoryInline() {
+        function saveCustomCategoryInline() {
     const input = document.getElementById('customCatInput');
     const catName = input ? input.value.trim() : '';
+    console.log("Saving category:", catName, "Input found:", !!input);
+
     if (!catName) {
-        alert("Please type a category name!");
+        alert("ক্যাটাগরির নাম লিখুন।");
         return;
     }
 
@@ -1735,8 +1737,6 @@ function syncCategorySelects(items = rawMenuItems, selectedValue = '') {
     if (typeof renderCategoryFilters === 'function') {
         renderCategoryFilters(rawMenuItems);
     }
-
-    alert(`"${catName}" ক্যাটাগরি তৈরি ও সিলেক্ট করা হয়েছে!`);
 }
 
         function renderCategoryFilters(items) {
